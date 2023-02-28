@@ -1,6 +1,8 @@
 <?php
 namespace fragaria;
 
+use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Messenger\MessengerTrait;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
@@ -32,20 +34,34 @@ class FragariaRedirectRoutingService {
     $this->entityTypeManager = $entity_type_manager;
   }
 
-
   /**
    * Returns route Collection;
    *
    * @return \Symfony\Component\Routing\RouteCollection;
    *   An array of route objects.
    */
-  public function redirect_routes() {
-    $routes = [];
-    $query = $this->entityTypeManager->getStorage('fragariaredirect_entity')->getQuery();
+  public function redirect_routes(): RouteCollection {
+    $route_collection = new RouteCollection();
+    try {
+      $query = $this->entityTypeManager->getStorage('fragariaredirect_entity')
+        ->getQuery();
+    } catch (InvalidPluginDefinitionException $e) {
+      return $route_collection;
+    } catch (PluginNotFoundException $e) {
+      return $route_collection;
+    }
     $ids = $query->execute();
     /* @var \Drupal\fragaria\Entity\FragariaRedirectConfigEntity[] $entities */
-    $entities = $this->entityTypeManager->getStorage('fragariaredirect_entity')->loadMultiple($ids);
-    $route_collection = new RouteCollection();
+    try {
+      $entities = $this->entityTypeManager->getStorage(
+        'fragariaredirect_entity'
+      )->loadMultiple($ids);
+    } catch (InvalidPluginDefinitionException $e) {
+      return $route_collection;
+    } catch (PluginNotFoundException $e) {
+      return $route_collection;
+    }
+
     /* @TODO
      * - sanitize prefix, suffixes
      * - check if we can use the prefixed one as base route for the other
