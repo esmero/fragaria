@@ -47,3 +47,8 @@
 /robots.txt
 /update.php
 /web.config
+.idea/vcs.xml
+.idea/php.xml
+.idea/modules.xml
+.idea/fragaria.iml
+.idea/codeStyles/codeStyleConfig.xml

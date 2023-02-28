@@ -1,0 +1,5 @@
+entity.fragariaredirect_entity.add_form:
+  route_name: 'entity.fragariaredirect_entity.add_form'
+  title: 'Add a Redirect Config'
+  appears_on:
+    - entity.fragariaredirect_entity.collection

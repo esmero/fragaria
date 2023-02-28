@@ -1,0 +1,14 @@
+<?php
+/**
+ * @file
+ * Contains formater_strawberryfield.module.
+ */
+
+use Drupal\format_strawberryfield\Controller\WebAnnotationController;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Entity\Display\EntityDisplayInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Swaggest\JsonDiff\JsonDiff;
+
+

@@ -1,0 +1,10 @@
+name: Archipelago ID and Redirect Module
+description: Provides ID and Redirect capabilities for ADOs.
+package: Archipelago
+type: module
+core_version_requirement: ^9 || ^10
+php: 8.x
+dependencies:
+  - 'drupal:field'
+  - 'drupal:user'
+  - 'strawberryfield'

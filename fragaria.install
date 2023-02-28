@@ -1,0 +1,42 @@
+<?php
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Config\Entity\ConfigEntityType;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Core\Database\Database;
+
+/**
+ * Implements hook_update_N().
+ *
+ * Installs fragariaredirect_entity config entity for dynamic routing redirects.
+ *
+ * @see 'https://www.drupal.org/node/3034742'
+ */
+function fragaria_update_9001() {
+  \Drupal::entityDefinitionUpdateManager()->installEntityType(new ConfigEntityType([
+    'id' => 'fragariaredirect_entity',
+    'label' => new TranslatableMarkup('Fragaria Redirect Entity Configuration'),
+    'config_prefix' => 'fragariaredirect_entity',
+    'admin_permission' => 'administer site configuration',
+    'entity_keys' => ['id' => 'id',
+      'label' => 'label',
+      'uuid' => 'uuid',
+      'active' => 'active',
+    ],
+    'config_export' => [
+      "id",
+      "label",
+      "uuid",
+      "path_prefix",
+      "search_api_index",
+      "search_api_field",
+      "path_suffixes",
+      "redirect_http_code",
+      "cache",
+      "active",
+   ]
+  ]));
+  $message = "Fragaria Redirect Entity Installed";
+  return $message;
+}
+
+

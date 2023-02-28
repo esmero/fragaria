@@ -1,0 +1,7 @@
+#Adds to Archipelago Expose Metadata Config
+entity.fragariaredirect_entity.collection:
+  title: 'Configure Redirects'
+  route_name: entity.fragariaredirect_entity.collection
+  description: 'Configure redirects to ADOs using dynamic routes matched against Search API field values'
+  parent: strawberryfield.group.admin
+  weight: 100
