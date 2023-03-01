@@ -13,7 +13,7 @@ use Drupal\strawberryfield\Plugin\search_api\datasource\StrawberryfieldFlavorDat
  *
  * @ingroup fragaria
  */
-class FragariaRedirectConfigEntitityListBuilder extends ConfigEntityListBuilder {
+class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
 
   /**
    * {@inheritdoc}
@@ -123,14 +123,8 @@ class FragariaRedirectConfigEntitityListBuilder extends ConfigEntityListBuilder 
     /** @var \Drupal\search_api\IndexInterface[] $indexes */
     $indexes = \Drupal::entityTypeManager()
       ->getStorage('search_api_index')
-      ->loadMultiple();
+      ->load($entity->getSearchApiIndex());
 
-    foreach ($indexes as $index_id => $index) {
-      // Filter out indexes that don't contain the datasource in question.
-      if (!$index->isValidDatasource('entity:node')) {
-        unset($indexes[$index_id]);
-      }
-    }
 
 
     /*
@@ -163,7 +157,7 @@ class FragariaRedirectConfigEntitityListBuilder extends ConfigEntityListBuilder 
         ->getBackend()
         ->getSolrFieldNames($index);
 
-      $query->addCondition($entity->getSourceEntityfieldName(), NULL, '<>');
+      $query->addCondition($entity->getSearchApiField(), NULL, '<>');
       $result = $query->execute();
 
     }

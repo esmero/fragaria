@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\format_strawberryfield\Form;
+namespace Drupal\fragaria\Form;
 
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -84,7 +84,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => TRUE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getPathPrefix() : NULL,
       ],
-      'path_sufixes' => [
+      'path_suffixes_element' => [
         '#type' => 'textarea',
         '#title' => $this->t('The Suffixes (that follow the prefix + the variable part) for the Redirect Route.'),
         '#required' => FALSE,
@@ -129,12 +129,11 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     // Remove button and internal Form API values from submitted values.
     $form_state->cleanValues();
-    $suffixes = $form_state->getValue('path_sufixes',[]);
-    $suffixes = explode("\n", array_map(function ($line) {
-      return trim($line);
-    }));
+    $suffixes = $form_state->getValue('path_suffixes_element','');
+    $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $suffixes));
+    $suffixes = array_filter($suffixes);
     $this->entity = $this->buildEntity($form, $form_state);
-    $this->entity->setPathSuffixes($suffixes);
+    $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
   }
 
 

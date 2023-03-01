@@ -1,0 +1,4 @@
+services:
+  fragaria.route_subscriber:
+    class: Drupal\fragaria\Routing\FragariaRedirectRoutingService
+    arguments: ['@entity_type.manager']

@@ -17,14 +17,14 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *   id = "fragariaredirect_entity",
  *   label = @Translation("Fragaria Redirect Entity Configuration"),
  *   handlers = {
- *     "list_builder" = "\Drupal\fragaria\Entity\Controller\FragariaRedirectConfigEntityListBuilder",
+ *     "list_builder" = "Drupal\fragaria\Entity\Controller\FragariaRedirectConfigEntityListBuilder",
  *     "form" = {
  *       "add" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityForm",
  *       "edit" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityForm",
  *       "delete" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityDeleteForm",
  *     },
  *     "route_provider" = {
- *       "html" = "Drupal\fragaria\FragariaRedirectConfigEntityFormHtmlRouteProvider",
+ *       "html" = "Drupal\fragaria\FragariaRedirectConfigEntityHtmlRouteProvider",
  *     },
  *   },
  *   config_prefix = "fragariaredirect_entity",

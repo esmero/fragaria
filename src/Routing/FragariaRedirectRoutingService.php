@@ -1,5 +1,5 @@
 <?php
-namespace fragaria;
+namespace Drupal\fragaria\Routing;
 
 use Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException;
 use Drupal\Component\Plugin\Exception\PluginNotFoundException;
