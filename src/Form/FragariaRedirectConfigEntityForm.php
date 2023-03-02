@@ -250,19 +250,4 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
   public function onIndexSelect(array &$form, FormStateInterface $form_state) {
     return $form['search_api_field'];
   }
-
-  /**
-   * Submission handler for condition changes in
-   */
-  public function field_submit(array &$form, FormStateInterface $form_state) {
-    // We want to unset values here.
-    // That way, e.g in case people select an index, then a field
-    // And then a new index, solr_field_select gets always a chance to be
-    // reselected.
-    if (empty($form_state->getValue('search_api_index'))) {
-      $form_state->unsetValue('search_api_field');
-    }
-
-    $form_state->setRebuild(TRUE);
-  }
 }

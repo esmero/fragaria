@@ -54,9 +54,20 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
   public function buildRow(EntityInterface $entity) {
     /* @var $entity \Drupal\fragaria\Entity\FragariaRedirectConfigEntity */
     // Build a demo URL so people can see it working
-    $value = $this->getOneValuefromSearchAPI($entity);
+    $value = NULL;
+    if ($entity->isActive()) {
+      $value = $this->getOneValuefromSearchAPI($entity);
 
-    $url = $value ? $this->getDemoUrlForItem($entity, $value) : $this->t('We could not create an example URL for this endpoint. The configured Search API field might not have data yet.');
+      $url = ($value !== NULL)
+        ? $this->getDemoUrlForItem($entity, $value)
+        : $this->t(
+          'We could not create an example URL for this endpoint. The configured Search API field might not have data yet.'
+        );
+    }
+    else {
+      $url = $this->t(
+        'Inactive Redirects can not generate Route URLs');
+    };
     $row['id'] = $entity->id();
     $row['label'] = $entity->label();
     $row['url'] = $url && $value ? [
@@ -88,12 +99,35 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
    */
   private function getDemoUrlForItem(FragariaRedirectConfigEntity $entity, string $value) {
     $url = NULL;
+    /*
+     *
+     *  $prefix = $entity->getPathPrefix();
+        $prefix = trim(trim($prefix), '/');
+        $suffixes = $entity->getPathSuffixes();
+        $route = new Route(
+          '/' . $prefix . '/{key}',
+          [
+            '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_processor',
+          ],
+          [
+            '_access' => 'TRUE',
+          ]
+        );
+        $route->setDefault('fragariaredirect_entity', $entity->id());
+        $route_collection->add('fragaria_redirect.'.$entity->id(), $route);
+        foreach ($suffixes as $suffix) {
+          $suffix = trim(trim($suffix), '/');
+          $route_suffix = clone $route;
+          $route_suffix->setPath($route_suffix->getPath().'/'.$suffix);
+          $route_collection->add('fragaria_redirect.'.$entity->id().'.'.$suffix, $route);
+        }
+     */
     try {
       $url = \Drupal::urlGenerator()
         ->generateFromRoute(
           'fragaria_redirect.' . $entity->id(),
           [
-            'argument' => $value,
+            'key' => $value,
           ]
         );
     }
@@ -121,29 +155,12 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
   private function getOneValuefromSearchAPI(FragariaRedirectConfigEntity $entity) {
 
     /** @var \Drupal\search_api\IndexInterface[] $indexes */
-    $indexes = \Drupal::entityTypeManager()
+    $index = \Drupal::entityTypeManager()
       ->getStorage('search_api_index')
       ->load($entity->getSearchApiIndex());
 
-
-
-    /*
-     *  // Also check whether the underlying property actually (still) exists.
-      $datasource_id = $field->getDatasourceId();
-      $property = NULL;
-      if ($datasource_id === NULL || $this->isValidDatasource($datasource_id)) {
-        $properties = $this->getPropertyDefinitions($datasource_id);
-        $property = \Drupal::getContainer()
-          ->get('search_api.fields_helper')
-          ->retrieveNestedProperty($properties, $field->getPropertyPath());
-      }
-      if (!$property) {
-        $this->removeField($field_id);
-      }
-    }
-     */
-
-    foreach ($indexes as $index) {
+    $value = NULL;
+    if ($index) {
       // Create the query.
       $query = $index->query([
         'limit' => 1,
@@ -156,13 +173,27 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
       $allfields_translated_to_solr = $index->getServerInstance()
         ->getBackend()
         ->getSolrFieldNames($index);
-
+      $query->setOption('search_api_retrieved_field_values', [$entity->getSearchApiField() => $entity->getSearchApiField()]);
       $query->addCondition($entity->getSearchApiField(), NULL, '<>');
-      $result = $query->execute();
-
+      $results = $query->execute();
+      foreach($results->getResultItems() as $itemid => $resultItem) {
+        // We can not allow any extraction or entity load happening here
+        // The Search API entity loading will interrupt other sessions/active NODEs
+        // and will disable EDIT/any management on the ADO that is using this
+        // Extension. So we will get what is in the index (solr)
+        // Will have no issues with this.
+        // This is related to "QueryInterface::PROCESSING_FULL" but is needed to respect
+        // Permissions. If not this will get anything from the Server
+        // Including hidden/unpublished things.
+        foreach ($resultItem->getFields(FALSE) as $key => $field) {
+          if ($key == $entity->getSearchApiField()) {
+            $value = $field->getValues();
+          }
+        }
+      }
     }
 
-    return is_array($result) ? reset($result) : $result;
+    return is_array($value) ? reset($value) : $value;
   }
 
 }
