@@ -87,6 +87,16 @@ class Redirect extends ControllerBase {
     }
   }
 
+  /**
+   * Capture the payload. Send to that happy place.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   A simple string and Redirect response.
+   */
+  public function redirect_processor_variable(Request $request, $key, $catch_all) {
+    return $this->redirect_processor($request, $key);
+  }
+
 
   public function getFragariaEntityFromRouteMatch(RouteMatchInterface $route_match) {
     $entity = NULL;
@@ -122,7 +132,32 @@ class Redirect extends ControllerBase {
         'search_api_retrieved_field_values',
         [$entity->getSearchApiField() => $entity->getSearchApiField()]
       );
-      $query->addCondition($entity->getSearchApiField(), $key);
+
+      $value_with_prefixes = [$key];
+      if ($entity->getSearchApiFieldValuePrefixes()) {
+        foreach ($entity->getSearchApiFieldValuePrefixes() as $prefix) {
+          $value_with_prefixes[] = $prefix.$key;
+        }
+      }
+      if ($entity->getSearchApiFieldValueSuffixes()) {
+        foreach ($entity->getSearchApiFieldValueSuffixes() as $suffix) {
+          foreach ($value_with_prefixes as $prefixed) {
+            $value_with_prefixes[] = $prefixed.$suffix;
+          }
+        }
+      }
+
+      if (count($value_with_prefixes) == 1) {
+        $query->addCondition(
+          $entity->getSearchApiField(), $value_with_prefixes[0]
+        );
+      }
+      else {
+        $query->addCondition(
+          $entity->getSearchApiField(), $value_with_prefixes, 'IN'
+        );
+      }
+
       $results = $query->execute();
       foreach ($results->getResultItems() as $itemid => $resultItem) {
         return $resultItem->getOriginalObject()->getValue();

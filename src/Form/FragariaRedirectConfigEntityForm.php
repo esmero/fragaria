@@ -123,6 +123,14 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getPathSuffixes()): NULL,
         '#description' => $this->t('Enter one by line. This configuration option is not required.'),
       ],
+      'variable_path_suffix' => [
+        '#type' => 'checkbox',
+        '#title' => $this->t('Instead of fixed Prefixes add a single {catch_all} variable suffix at the end'),
+        '#required' => FALSE,
+        '#return_value' => TRUE,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getVariablePathSuffix(): FALSE,
+        '#description' => $this->t('This disables any entered static suffixes.'),
+      ],
       'search_api_index' => [
         '#type' => 'select',
         "#empty_value" => NULL,
@@ -139,7 +147,6 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         ],
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getSearchApiIndex() : NULL,
       ],
-
       'search_api_field' => [
         '#prefix' => '<div id="search-api-field-select">',
         '#suffix' => '</div>',
@@ -148,10 +155,21 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#title' => $this->t('The Search API Field that will be matched against the variable part of the route.'),
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getSearchApiField(): NULL,
-
-
       ],
-
+      'search_api_field_value_prefixes_element' => [
+        '#type' => 'textarea',
+        '#title' => $this->t('Add static prefixes for to the variable part/argument of the path. '),
+        '#required' => FALSE,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiFieldValuePrefixes()): NULL,
+        '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/1 and the indexed value is "namespace:1". In that case add "namespace:" here.'),
+      ],
+      'search_api_field_value_suffixes_element' => [
+        '#type' => 'textarea',
+        '#title' => $this->t('Add static suffixes for to the variable part/argument of the path. '),
+        '#required' => FALSE,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiFieldValueSuffixes()): NULL,
+        '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/namespace:1 and the indexed value is "namespace:1-page". In that case add "-page" here.'),
+      ],
       'redirect_http_code' => [
         '#type' => 'select',
         '#options' => [
@@ -162,7 +180,6 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => TRUE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getRedirectHttpCode(): NULL,
       ],
-
       'active' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Is this Fragaria Redirect Route active?'),
@@ -180,8 +197,23 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     $suffixes = $form_state->getValue('path_suffixes_element','');
     $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $suffixes));
     $suffixes = array_filter($suffixes);
+
+
+    $search_api_field_value_prefixes = $form_state->getValue('search_api_field_value_prefixes_element','');
+    $search_api_field_value_prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $search_api_field_value_prefixes));
+    $search_api_field_value_prefixes = array_filter($search_api_field_value_prefixes);
+
+
+    $search_api_field_value_suffixes = $form_state->getValue('search_api_field_value_suffixes_element','');
+    $search_api_field_value_suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $search_api_field_value_suffixes));
+    $search_api_field_value_suffixes = array_filter($search_api_field_value_suffixes);
+
+
     $this->entity = $this->buildEntity($form, $form_state);
     $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
+    $this->entity->setSearchApiFieldValueSuffixes(is_array($search_api_field_value_suffixes) ? $search_api_field_value_suffixes : []);
+    $this->entity->setSearchApiFieldValuePrefixes(is_array($search_api_field_value_prefixes) ? $search_api_field_value_prefixes : []);
+
   }
 
 

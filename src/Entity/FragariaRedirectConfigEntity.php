@@ -43,6 +43,9 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "search_api_index",
  *     "search_api_field",
  *     "path_suffixes",
+ *     "search_api_field_value_prefixes",
+ *     "search_api_field_value_suffixes",
+ *     "variable_path_suffix",
  *     "redirect_http_code",
  *     "cache",
  *     "active",
@@ -86,6 +89,36 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var array
    */
   public array $path_suffixes = [];
+
+
+  /**
+   * Set of static prefixes to be added to the passed argument of the route.
+   *
+   * This is needed in case the indexed value does not match 1:1 with the route
+   * argument, e.g argument is 111, the actual indexed value is namespace:111
+   *
+   * @var array
+   */
+  public array $search_api_field_value_prefixes = [];
+
+
+  /**
+   * Set of static suffixes to be added to the passed argument of the route.
+   *
+   * This is needed in case the indexed value does not match 1:1 with the route
+   * argument, e.g argument is 123, the actual indexed value is 123:other
+   *
+   * @var array
+   */
+  public array $search_api_field_value_suffixes = [];
+
+
+  /**
+   * Don't use extra suffixes, add a single {catch_all} extra suffix.
+   *
+   * @var bool
+   */
+  public bool $variable_path_suffix = FALSE;
 
   /**
    * The Search API Index ID of the field.
@@ -244,6 +277,43 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    */
   public function getRedirectHttpCode(): string {
     return $this->redirect_http_code;
+  }
+
+  /**
+   * @return array
+   */
+  public function getSearchApiFieldValuePrefixes(): array {
+    return $this->search_api_field_value_prefixes;
+  }
+
+  /**
+   * @return bool
+   */
+  public function getVariablePathSuffix(): bool {
+    return $this->variable_path_suffix;
+  }
+
+  /**
+   * @return array
+   */
+  public function getSearchApiFieldValueSuffixes(): array {
+    return $this->search_api_field_value_suffixes;
+  }
+
+  /**
+   * @param array $search_api_field_value_suffixes
+   */
+  public function setSearchApiFieldValueSuffixes(array $search_api_field_value_suffixes
+  ): void {
+    $this->search_api_field_value_suffixes = $search_api_field_value_suffixes;
+  }
+
+  /**
+   * @param array $search_api_field_value_prefixes
+   */
+  public function setSearchApiFieldValuePrefixes(array $search_api_field_value_prefixes
+  ): void {
+    $this->search_api_field_value_prefixes = $search_api_field_value_prefixes;
   }
 
 
