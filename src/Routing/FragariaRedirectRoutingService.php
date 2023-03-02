@@ -74,7 +74,7 @@ class FragariaRedirectRoutingService {
         $route = new Route(
           '/' . $prefix . '/{key}',
           [
-            '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect',
+            '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_processor',
           ],
           [
             '_access' => 'TRUE',

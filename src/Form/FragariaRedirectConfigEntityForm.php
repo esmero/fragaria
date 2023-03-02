@@ -2,10 +2,13 @@
 
 namespace Drupal\fragaria\Form;
 
+use Drupal\Core\Ajax\AjaxResponse;
+use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\strawberryfield\StrawberryfieldUtilityService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\format_strawberryfield\Entity\MetadataExposeConfigEntity;
@@ -15,6 +18,11 @@ use Drupal\format_strawberryfield\Entity\MetadataExposeConfigEntity;
  */
 class FragariaRedirectConfigEntityForm extends EntityForm {
 
+  /**
+   * @var \Drupal\strawberryfield\StrawberryfieldUtilityService
+   */
+  private StrawberryfieldUtilityService $strawberryfieldUtility;
+
 
   /**
    * FragariaRedirectConfigEntityForm constructor.
@@ -22,9 +30,11 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
    */
   public function __construct(
-    EntityTypeManagerInterface $entityTypeManager
+    EntityTypeManagerInterface $entityTypeManager,
+    StrawberryfieldUtilityService $strawberryfield_utility_service
   ) {
     $this->entityTypeManager = $entityTypeManager;
+    $this->strawberryfieldUtility = $strawberryfield_utility_service;
   }
 
   /**
@@ -33,6 +43,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
   public static function create(ContainerInterface $container) {
     return new static(
       $container->get('entity_type.manager'),
+      $container->get('strawberryfield.utility'),
     );
   }
 
@@ -56,8 +67,29 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         $indexes_option[$key] = $index->label();
       }
     }
-    $field_options = [];
 
+
+
+    if ($form_state->isRebuilding()) {
+      // Idea here is: rebuilding means user submitted values,
+      // So our original Config is not longer valid
+      // We use what is passed around.
+      $index_id = $form_state->getValue('search_api_index', NULL);
+
+      // NO need to get 'solr_field_select' from form state
+      // since its the last step and would only
+      // trigger a rebuild if index or server changes.
+    }
+    else {
+      $index_id = !$fragariaredirect_config->isNew() ? $fragariaredirect_config->getSearchApiIndex() : NULL;
+    }
+
+    $field_options = [];
+    if ($index_id && isset($indexes[$index_id])) {
+      foreach ($this->strawberryfieldUtility->getStrawberryfieldSolrFields($indexes[$index_id]) as $key => $field) {
+          $field_options[$key] = $field['label'];
+        }
+    }
 
     $form = [
       'label' => [
@@ -93,18 +125,33 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
       ],
       'search_api_index' => [
         '#type' => 'select',
+        "#empty_value" => NULL,
+        '#empty_option' => '- Select Solr Index -',
         '#options' => $indexes_option,
         '#title' => $this->t('The Search API Index where the Field that will be matched against the variable part of the route exists.'),
-        '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiIndex()): NULL,
+        '#required' => TRUE,
+        '#limit_validation_errors' => [['search_api_index']],
+        '#ajax' => [
+          'callback' => '::onIndexSelect',
+          'disable-refocus' => FALSE,
+          'event' => 'change',
+          'wrapper' => 'search-api-field-select',
+        ],
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getSearchApiIndex() : NULL,
       ],
+
       'search_api_field' => [
+        '#prefix' => '<div id="search-api-field-select">',
+        '#suffix' => '</div>',
         '#type' => 'select',
         '#options' => $field_options,
         '#title' => $this->t('The Search API Field that will be matched against the variable part of the route.'),
         '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiField()): NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getSearchApiField(): NULL,
+
+
       ],
+
       'redirect_http_code' => [
         '#type' => 'select',
         '#options' => [
@@ -113,8 +160,9 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         ],
         '#title' => $this->t('Type of HTTP redirect to perform.'),
         '#required' => TRUE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getRedirectHttpCode()): NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getRedirectHttpCode(): NULL,
       ],
+
       'active' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Is this Fragaria Redirect Route active?'),
@@ -194,4 +242,27 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     return (bool) $entity;
   }
 
+  /**
+   * AJAX callback function when user selects Index
+   *
+   * Updates Solr Field dropdown
+   */
+  public function onIndexSelect(array &$form, FormStateInterface $form_state) {
+    return $form['search_api_field'];
+  }
+
+  /**
+   * Submission handler for condition changes in
+   */
+  public function field_submit(array &$form, FormStateInterface $form_state) {
+    // We want to unset values here.
+    // That way, e.g in case people select an index, then a field
+    // And then a new index, solr_field_select gets always a chance to be
+    // reselected.
+    if (empty($form_state->getValue('search_api_index'))) {
+      $form_state->unsetValue('search_api_field');
+    }
+
+    $form_state->setRebuild(TRUE);
+  }
 }
