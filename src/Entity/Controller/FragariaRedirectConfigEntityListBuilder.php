@@ -99,29 +99,6 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
    */
   private function getDemoUrlForItem(FragariaRedirectConfigEntity $entity, string $value) {
     $url = NULL;
-    /*
-     *
-     *  $prefix = $entity->getPathPrefix();
-        $prefix = trim(trim($prefix), '/');
-        $suffixes = $entity->getPathSuffixes();
-        $route = new Route(
-          '/' . $prefix . '/{key}',
-          [
-            '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_processor',
-          ],
-          [
-            '_access' => 'TRUE',
-          ]
-        );
-        $route->setDefault('fragariaredirect_entity', $entity->id());
-        $route_collection->add('fragaria_redirect.'.$entity->id(), $route);
-        foreach ($suffixes as $suffix) {
-          $suffix = trim(trim($suffix), '/');
-          $route_suffix = clone $route;
-          $route_suffix->setPath($route_suffix->getPath().'/'.$suffix);
-          $route_collection->add('fragaria_redirect.'.$entity->id().'.'.$suffix, $route);
-        }
-     */
     try {
       $url = \Drupal::urlGenerator()
         ->generateFromRoute(
@@ -161,30 +138,12 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
 
     $value = NULL;
     if ($index) {
-      // Create the query.
-      $query = $index->query([
-        'limit' => 1,
-        'offset' => 0,
-      ]);
-
       $query = $index->query();
       $query->range(0, 1);
-
-      $allfields_translated_to_solr = $index->getServerInstance()
-        ->getBackend()
-        ->getSolrFieldNames($index);
       $query->setOption('search_api_retrieved_field_values', [$entity->getSearchApiField() => $entity->getSearchApiField()]);
       $query->addCondition($entity->getSearchApiField(), NULL, '<>');
       $results = $query->execute();
       foreach($results->getResultItems() as $itemid => $resultItem) {
-        // We can not allow any extraction or entity load happening here
-        // The Search API entity loading will interrupt other sessions/active NODEs
-        // and will disable EDIT/any management on the ADO that is using this
-        // Extension. So we will get what is in the index (solr)
-        // Will have no issues with this.
-        // This is related to "QueryInterface::PROCESSING_FULL" but is needed to respect
-        // Permissions. If not this will get anything from the Server
-        // Including hidden/unpublished things.
         foreach ($resultItem->getFields(FALSE) as $key => $field) {
           if ($key == $entity->getSearchApiField()) {
             $value = $field->getValues();
@@ -192,7 +151,6 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
         }
       }
     }
-
     return is_array($value) ? reset($value) : $value;
   }
 
