@@ -82,11 +82,11 @@ class FragariaRedirectRoutingService {
         );
         $route->setDefault('fragariaredirect_entity', $entity->id());
         $route_collection->add('fragaria_redirect.'.$entity->id(), $route);
-        foreach ($suffixes as $suffix) {
+        foreach ($suffixes as $key => $suffix) {
           $suffix = trim(trim($suffix), '/');
           $route_suffix = clone $route;
           $route_suffix->setPath($route_suffix->getPath().'/'.$suffix);
-          $route_collection->add('fragaria_redirect.'.$entity->id().'.'.$suffix, $route);
+          $route_collection->add('fragaria_redirect.'.$entity->id().'.'.$key, $route_suffix);
         }
       }
     }
