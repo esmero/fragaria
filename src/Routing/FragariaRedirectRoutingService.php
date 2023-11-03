@@ -80,27 +80,49 @@ class FragariaRedirectRoutingService {
           ]
         );
         $route->setDefault('fragariaredirect_entity', $entity->id());
-        $route_collection->add('fragaria_redirect.'.$entity->id(), $route);
-
-        if ($entity->getVariablePathSuffix()) {
-          $route_variable = clone $route;
-          $route_variable->setPath($route_variable->getPath() . '/{catch_all}');
-          $route_variable->setOption('_controller', 'Drupal\fragaria\Controller\Redirect::redirect_processor_variable');
-          $route_variable->setDefault('catch_all', '');
-          $route_collection->add(
-            'fragaria_redirect.' . $entity->id() . '.variable', $route_variable
+        if ($entity->isDoReplacement()) {
+          $route->setRequirement('key', "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+          $route->setOptions(
+            ["parameters" => [
+              "key" => [
+                "type" => 'entity:node'],
+              ["resource_type" =>
+                 ["type" => 'ado']
+              ]
+            ]]);
+          $route->setOption(
+            '_controller',
+            'Drupal\fragaria\Controller\Redirect::redirect_do'
           );
-
         }
-        else {
-          $suffixes = $entity->getPathSuffixes();
-          foreach ($suffixes as $key => $suffix) {
-            $suffix = trim(trim($suffix), '/');
-            $route_suffix = clone $route;
-            $route_suffix->setPath($route_suffix->getPath() . '/' . $suffix);
-            $route_collection->add(
-              'fragaria_redirect.' . $entity->id() . '.' . $key, $route_suffix
+
+        if (!$entity->isDoReplacement()) {
+          if ($entity->getVariablePathSuffix()) {
+            $route_variable = clone $route;
+            $route_variable->setPath(
+              $route_variable->getPath() . '/{catch_all}'
             );
+            $route_variable->setOption(
+              '_controller',
+              'Drupal\fragaria\Controller\Redirect::redirect_processor_variable'
+            );
+            $route_variable->setDefault('catch_all', '');
+            $route_collection->add(
+              'fragaria_redirect.' . $entity->id() . '.variable',
+              $route_variable
+            );
+
+          }
+          else {
+            $suffixes = $entity->getPathSuffixes();
+            foreach ($suffixes as $key => $suffix) {
+              $suffix = trim(trim($suffix), '/');
+              $route_suffix = clone $route;
+              $route_suffix->setPath($route_suffix->getPath() . '/' . $suffix);
+              $route_collection->add(
+                'fragaria_redirect.' . $entity->id() . '.' . $key, $route_suffix
+              );
+            }
           }
         }
       }
