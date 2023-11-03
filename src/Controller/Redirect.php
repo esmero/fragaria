@@ -94,11 +94,11 @@ class Redirect extends ControllerBase {
    * @return \Symfony\Component\HttpFoundation\Response
    *   A simple string and Redirect response.
    */
-  public function redirect_do(Request $request, ContentEntityInterface $node) {
+  public function redirect_do(Request $request, ContentEntityInterface $key) {
     $entity = $this->getFragariaEntityFromRouteMatch($this->routeMatch);
     if ($entity) {
-      if ($node) {
-        $url = $node->toUrl('canonical', ['absolute' => FALSE])->toString();
+      if ($key) {
+        $url = $key->toUrl('canonical', ['absolute' => FALSE])->toString();
         $response = new RedirectResponse($url, (int) $entity->getRedirectHttpCode());
         return $response;
       }

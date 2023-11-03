@@ -241,7 +241,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   /**
    * @return string
    */
-  public function getSearchApiIndex(): string {
+  public function getSearchApiIndex(): string|null {
     return $this->search_api_index;
   }
 

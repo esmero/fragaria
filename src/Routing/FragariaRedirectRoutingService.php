@@ -70,32 +70,36 @@ class FragariaRedirectRoutingService {
       if ($entity->isActive()) {
         $prefix = $entity->getPathPrefix();
         $prefix = trim(trim($prefix), '/');
-        $route = new Route(
-          '/' . $prefix . '/{key}',
-          [
-            '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_processor',
-          ],
-          [
-            '_access' => 'TRUE',
-          ]
-        );
-        $route->setDefault('fragariaredirect_entity', $entity->id());
         if ($entity->isDoReplacement()) {
-          $route->setRequirement('key', "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
-          $route->setOptions(
-            ["parameters" => [
-              "key" => [
-                "type" => 'entity:node'],
-              ["resource_type" =>
-                 ["type" => 'ado']
-              ]
-            ]]);
-          $route->setOption(
-            '_controller',
-            'Drupal\fragaria\Controller\Redirect::redirect_do'
+          $route = new Route(
+            '/' . $prefix . '/{key}',
+            [
+              '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_do',
+            ],
+            [
+              '_access' => 'TRUE',
+            ]
           );
+          $route->setRequirement('key', "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+          $options['parameters']['key'] = ['type' => 'entity:node'];
+          $options['parameters']['resource_type'] = ['type' => 'ado'];
+          $route->setOptions($options);
+          $route->setDefault('fragariaredirect_entity', $entity->id());
+          $route_collection->add('fragaria_redirect.' . $entity->id(), $route);
         }
-
+        else {
+          $route = new Route(
+            '/' . $prefix . '/{key}',
+            [
+              '_controller' => 'Drupal\fragaria\Controller\Redirect::redirect_processor',
+            ],
+            [
+              '_access' => 'TRUE',
+            ]
+          );
+          $route->setDefault('fragariaredirect_entity', $entity->id());
+          $route_collection->add('fragaria_redirect.' . $entity->id(), $route);
+        }
         if (!$entity->isDoReplacement()) {
           if ($entity->getVariablePathSuffix()) {
             $route_variable = clone $route;

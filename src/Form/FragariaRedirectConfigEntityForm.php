@@ -113,9 +113,9 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
       'do_replacement' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Enable this if you removed your do/{uuid} path aliases but still (or finally) believe having REAL PURLs is important.'),
-        '#title' => $this->t('This will disable suffixes, search api field matching and the Variable part will become the UUID of the node'),
+        '#Description' => $this->t('This will disable suffixes, search api field matching and the Variable part will become the UUID of the node'),
         '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getPathPrefix() : NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->isDoReplacement() : FALSE,
       ],
       'path_prefix' => [
         '#type' => 'textfield',
@@ -215,14 +215,12 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     $search_api_field_value_suffixes = array_filter($search_api_field_value_suffixes);
     if ($form_state->getValue('do_replacement')) {
       $search_api_field_value_suffixes = [];
-      $form_state->setValue('search_api_index', NULL);
-      $form_state->setValue('search_api_field', NULL);
       $search_api_field_value_prefixes = [];
       $suffixes = [];
     }
 
     $this->entity = $this->buildEntity($form, $form_state);
-    this->entity->setDoReplacement($form_state->getValue('do_replacement') ? TRUE : FALSE);
+    $this->entity->setDoReplacement($form_state->getValue('do_replacement') ? TRUE : FALSE);
     $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
     $this->entity->setSearchApiFieldValueSuffixes(is_array($search_api_field_value_suffixes) ? $search_api_field_value_suffixes : []);
     $this->entity->setSearchApiFieldValuePrefixes(is_array($search_api_field_value_prefixes) ? $search_api_field_value_prefixes : []);
