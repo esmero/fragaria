@@ -132,26 +132,47 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
   private function getOneValuefromSearchAPI(FragariaRedirectConfigEntity $entity) {
 
     /** @var \Drupal\search_api\IndexInterface[] $indexes */
-    $index = \Drupal::entityTypeManager()
-      ->getStorage('search_api_index')
-      ->load($entity->getSearchApiIndex());
-
-    $value = NULL;
-    if ($index) {
-      $query = $index->query();
+    if ($entity->isDoReplacement()) {
+      $uuid = NULL;
+      $query = \Drupal::entityQuery('node');
+      $query->condition('status', 1);
       $query->range(0, 1);
-      $query->setOption('search_api_retrieved_field_values', [$entity->getSearchApiField() => $entity->getSearchApiField()]);
-      $query->addCondition($entity->getSearchApiField(), NULL, '<>');
-      $results = $query->execute();
-      foreach($results->getResultItems() as $itemid => $resultItem) {
-        foreach ($resultItem->getFields(FALSE) as $key => $field) {
-          if ($key == $entity->getSearchApiField()) {
-            $value = $field->getValues();
+      $node_ids = $query->accessCheck()->execute();
+      foreach (
+        \Drupal::entityTypeManager()->getStorage('node')->loadMultiple(
+          $node_ids
+        ) as $node
+      ) {
+        $uuid = $node->uuid();
+      }
+      return $uuid;
+    }
+    elseif ($entity->getSearchApiIndex()) {
+      $index = \Drupal::entityTypeManager()
+        ->getStorage('search_api_index')
+        ->load($entity->getSearchApiIndex());
+
+      $value = NULL;
+      if ($index) {
+        $query = $index->query();
+        $query->range(0, 1);
+        $query->setOption(
+          'search_api_retrieved_field_values',
+          [$entity->getSearchApiField() => $entity->getSearchApiField()]
+        );
+        $query->addCondition($entity->getSearchApiField(), NULL, '<>');
+        $results = $query->execute();
+        foreach ($results->getResultItems() as $itemid => $resultItem) {
+          foreach ($resultItem->getFields(FALSE) as $key => $field) {
+            if ($key == $entity->getSearchApiField()) {
+              $value = $field->getValues();
+            }
           }
         }
       }
+      return is_array($value) ? reset($value) : $value;
     }
-    return is_array($value) ? reset($value) : $value;
+    return NULL;
   }
 
 }
