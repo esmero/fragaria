@@ -10,6 +10,7 @@ namespace Drupal\fragaria\Controller;
 
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\fragaria\Entity\FragariaRedirectConfigEntity;
@@ -86,6 +87,31 @@ class Redirect extends ControllerBase {
       throw new NotFoundHttpException();
     }
   }
+
+  /**
+   * Capture the payload. Send to that happy place.
+   *
+   * @return \Symfony\Component\HttpFoundation\Response
+   *   A simple string and Redirect response.
+   */
+  public function redirect_do(Request $request, ContentEntityInterface $key) {
+    $entity = $this->getFragariaEntityFromRouteMatch($this->routeMatch);
+    if ($entity) {
+      if ($key) {
+        $url = $key->toUrl('canonical', ['absolute' => FALSE])->toString();
+        $response = new RedirectResponse($url, (int) $entity->getRedirectHttpCode());
+        return $response;
+      }
+      else {
+        throw new NotFoundHttpException();
+      }
+    }
+    else {
+      throw new NotFoundHttpException();
+    }
+  }
+
+
 
   /**
    * Capture the payload. Send to that happy place.

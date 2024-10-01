@@ -49,6 +49,7 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "redirect_http_code",
  *     "cache",
  *     "active",
+ *     "do_replacement"
  *   },
  *   links = {
  *     "edit-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit",
@@ -148,6 +149,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    */
   protected $active = TRUE;
 
+
+  /**
+   * Ignore everything, just use the NODE UUID.
+   *
+   * @var bool
+   */
+  protected $do_replacement = FALSE;
+
   /**
    * The Label for this config entity.
    *
@@ -232,7 +241,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   /**
    * @return string
    */
-  public function getSearchApiIndex(): string {
+  public function getSearchApiIndex(): string|null {
     return $this->search_api_index;
   }
 
@@ -312,6 +321,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   public function setSearchApiFieldValuePrefixes(array $search_api_field_value_prefixes
   ): void {
     $this->search_api_field_value_prefixes = $search_api_field_value_prefixes;
+  }
+
+  public function isDoReplacement(): bool {
+    return $this->do_replacement;
+  }
+
+  public function setDoReplacement(bool $do_replacement): void {
+    $this->do_replacement = $do_replacement;
   }
 
 

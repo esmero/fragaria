@@ -16,6 +16,20 @@ function fragaria_install() {
   \Drupal::entityDefinitionUpdateManager()->installEntityType($entity_type);
 }
 
+
+function fragaria_update_10001() {
+  $message = "Nothing to update. Fragaria Entity is not installed.";
+  $entity_type = \Drupal::entityDefinitionUpdateManager()->getEntityType('fragariaredirect_entity');
+  if ($entity_type) {
+    $entity_config_export = $entity_type->get('config_export');
+    $entity_config_export[] = 'do_replacement';
+    $entity_type->set('config_export', $entity_config_export);
+    \Drupal::entityDefinitionUpdateManager()->updateEntityType($entity_type);
+    $message = "Fragaria Entity's Schema updated with do_replacement setting";
+  }
+  return $message;
+}
+
 /**
  * Implements hook_uninstall().
  */
