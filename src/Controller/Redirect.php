@@ -40,6 +40,13 @@ class Redirect extends ControllerBase {
   protected $routeMatch;
 
   /**
+   * The parse mode manager.
+   *
+   * @var \Drupal\search_api\ParseMode\ParseModePluginManager
+   */
+  protected $parseModeManager;
+
+  /**
    * Constructs a new WebhookController object.
    */
   public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entitytype_manager,
