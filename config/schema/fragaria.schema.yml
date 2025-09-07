@@ -1,0 +1,31 @@
+fragaria.datacite:
+  type: config_object
+  label: 'Fragaria Datacite Settgings'
+  mapping:
+    active:
+      type: boolean
+      label: 'If DataCite API Integration is active'
+    simulate:
+      type: boolean
+      label: 'If DataCite API Integration is being internally simulated'
+    repository_fabrica_user:
+      type: string
+      label: "DataCite Repository User"
+    repository_fabrica_password:
+      type: string
+      label: "DataCite Repository Passowrd"
+    doi_prefix:
+      type: string
+      label: "The DOI Prefix assigned to your Institution and associated to your credentials"
+    use_test_account:
+      type: boolean
+      label: 'If DataCite API Integration should interact against DataCites Staging server'
+    repository_fabrica_user_test:
+      type: string
+      label: "DataCite Test Account User"
+    repository_fabrica_password_test:
+      type: string
+      label: "DataCite Test Account Passowrd"
+    processor_entity_id:
+      type: string
+      label: "Uuid of the Metadata Display used to Cast DataCite valid metadata"
