@@ -275,6 +275,9 @@ class DataCiteService {
       // Now validate both. We are going to use a decision matrix to decide how to proceed.
       // Super important. The only reason "event" from a previous version might be stored and passed around is IF
       // the status of that event was "error". We don't preserve the Last Event request, only the final status.
+      // List of actions
+      $generate_metadata = FALSE;
+      $calls = [];
 
       $ap_task_passed_array = $this->validateApTask($datacite_trigger);
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
@@ -284,12 +287,19 @@ class DataCiteService {
         // First we check if we have no DOI (previous or new)
         if ($ap_task_passed_array[3] == NULL && $ap_task_passed_array[3] == NULL) {
           if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'draft') {
+            $generate_metadata = TRUE;
+            $calls[] = ['api' => 'create', 'event' => NULL];
             // call API with empty event. NO DOI passed neither
           }
           if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'register') {
+            $generate_metadata = TRUE;
+            $calls[] = ['api' => 'create', 'event' => NULL];
+            $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
           }
           if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'publish') {
+            $generate_metadata = TRUE;
+            $calls[] = ['api' => 'create', 'event' => 'publish'];
             // call API with publish event.
           }
         }
@@ -298,12 +308,14 @@ class DataCiteService {
           // If we have an ADO, the workflow combo restrictions come in place.
           // Deal first with the most complex scenario. The user is providing a MANUAL DOI, and we have no previous history of it.
           if ($previous_ap_task_passed_array[3] == NULL && $entity_status) {
-            $DOI = $ap_task_passed_array[3];
+            $calls[] = ['api' => 'info', 'doi' => $ap_task_passed_array[3]];
             // Means we need to call the API and figure out if we have control over it, and IF we can execute the desired state.
           }
           if ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] != $previous_ap_task_passed_array[3]) {
             // This is wrong. One DOI per ADO. If the user is trying to connect a new one to this, but our state says we already have one.
             // Means we need to read from the remote the original one, and decide based on that.
+            $calls[] = ['api' => 'info', 'doi' => $previous_ap_task_passed_array[3]];
+            $calls[] = ['api' => 'info', 'doi' => $ap_task_passed_array[3]];
             // IF the old one is DRAFT. We can delete it, and generate the new one. IF not, then we need to make the OLD one the new $DOI;
             // If the old is not under our control (anymore) or gone, we can use the NEW one and move from there.
           }
@@ -312,21 +324,34 @@ class DataCiteService {
            // Now we can finally evaluate if the event can be run
             if ($ap_task_passed_array[2] == "draft" && $previous_ap_task_passed_array[1] == "draft") {
               // Nothing to do other than Updating metadata.
+              $generate_metadata = TRUE;
+              $calls[] = ['api' => 'update', 'event' => 'draft', 'doi' => $ap_task_passed_array[3]];
             }
             if ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
               // This requires an UPDATE status call.
+              $generate_metadata = TRUE;
+              $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => $ap_task_passed_array[3]];
             }
             if ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
+              $generate_metadata = TRUE;
+              $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
             if ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "registered" && $entity_status) {
+              $generate_metadata = TRUE;
+              $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
             if ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "findable" && $entity_status) {
+              $generate_metadata = TRUE;
+              $calls[] = ['api' => 'update', 'event' => 'hide', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call to "hide" it.
             }
             if ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] !== "draft") {
               // This is an error. And in that case we bail out.
+            }
+            if ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] === "draft") {
+              $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array[3]];
             }
           }
         }
