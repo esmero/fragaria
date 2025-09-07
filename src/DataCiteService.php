@@ -235,6 +235,31 @@ class DataCiteService {
 
 
   /**
+   * Deletes (a draft) DOI from DataCite.
+   *
+   * @param string $doi
+   *
+   * @return boolean
+   * @throws \GuzzleHttp\Exception\GuzzleException
+   */
+  public function deleteDOI(string $doi): bool {
+    $api_url_and_credentials = $this->getAPIUrlAndCredentials();
+    $response_encoded = [];
+    $status = FALSE;
+    if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
+      $api_url = $api_url_and_credentials[0] . trim($doi);
+      $response = $this->httpClient->request('DELET', $api_url, [
+        'headers' => [
+          'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2])
+        ],
+      ]);
+      $status = $response->getStatusCode() == 204;
+    }
+    return $status;
+  }
+
+
+  /**
    * This is the entry point for this service.
    *
    *  The reason we don't pass along the complete Pre-save data is bc we only
@@ -278,6 +303,7 @@ class DataCiteService {
       // List of actions
       $generate_metadata = FALSE;
       $calls = [];
+      $ap_task_to_save = [];
 
       $ap_task_passed_array = $this->validateApTask($datacite_trigger);
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
@@ -361,6 +387,11 @@ class DataCiteService {
           // IF the previous status was 'error'.
         }
    }
+      else {
+        if ($previous_ap_task_passed_array[0] == TRUE && $ap_task_passed_array[0] == FALSE) {
+          $ap_task_to_save = $previous_ap_task_passed_array[0];
+        }
+      }
 
 
 
@@ -368,6 +399,8 @@ class DataCiteService {
       // But only IF there is a previous valid (with a DOI present) version in the pre-save.
       // Also, unpublished records can only have Drafts. Ok?
       // We don't make the transition automatically to Registered
+
+      //@TODO reset $ap_task_to_save;
 
     }
   }
