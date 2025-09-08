@@ -130,6 +130,26 @@ class DataCiteService {
   }
 
   /**
+   * Returns the active URL and credentials
+   *
+   * @return string|null
+   */
+  public function getActiveAPI(): ?string {
+    // @TODO. Make sure we also have password and user for both before returning
+    if ($this->isActive()) {
+      if ($this->config->get('use_test_account')) {
+        return 'datacite_test';
+      }
+      else {
+        return 'datacite';
+      }
+    } else {
+      return NULL;
+    }
+
+  }
+
+  /**
    * Fetches from DataCite a single DOI info,
    *
    * @param string $doi
@@ -283,7 +303,8 @@ class DataCiteService {
       //   1) If incompatible: If old version IS valid, restore it but do not keep running anything. Just log.
       //   1) If compatible: Run the workflow/move the states/ Update the entity.
       // If data needs to be updated re-set $fullvalues and set the field again.
-      $datacite_trigger = $fullvalues['ap:tasks']['ap:fragaria']['datacite'] ?? NULL;
+      $api = $this->getActiveAPI();
+      $datacite_trigger = $fullvalues['ap:tasks']['ap:fragaria'][$api] ?? NULL;
       $workflow_status = [];
       $entity_status = TRUE;
       if ($entity->getEntityType()->isRevisionable() && !$entity->isLatestRevision()) {
@@ -292,7 +313,10 @@ class DataCiteService {
       $entity_status =  $entity_status && $entity->isPublished();
       // Before calling anything
       if ($datacite_trigger == NULL && $previous_data_cite_value == NULL) {
-        // Nothing to do here, nobody is requesting anything.
+        // Nothing to do here, nobody is requesting anything or APIs don't match
+        // But we won't act on a non-active API.
+        // TODO. Maybe write drush/route callbacks that allow to act on a non active API?
+        // MMMM.
         return;
       }
       // Now validate both. We are going to use a decision matrix to decide how to proceed.
@@ -449,6 +473,8 @@ class DataCiteService {
     $requested_event = NULL;
     $current_status = NULL;
     $DOI = NULL;
+    // API needs to only match IF there is a 'status'. present. If new the request happens on the active one.
+    // Here we assume there can be only ONE dataCite ID at the time. Not ONE per API.
     // NULL is valid. Like no data.
     if ($datacite_metadata == NULL) {
       return [TRUE, NULL, $current_status];

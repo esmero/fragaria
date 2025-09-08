@@ -83,6 +83,7 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
       /* @var $entity \Drupal\node\Entity\Node */
       $entity = $event->getEntity();
       $sbf_fields = $event->getFields();
+      $api = $this->dataCiteService->getActiveAPI();
       foreach ($sbf_fields as $field_name) {
         /* @var $field \Drupal\Core\Field\FieldItemInterface */
         $field = $entity->get($field_name);
@@ -98,7 +99,8 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
             $full_original = $entity->original->get($field_name)
               ->get($delta)
               ->provideDecoded(TRUE);
-            $previous_datacite_value = $full_original['ap:tasks']['ap:fragaria']['datacite'] ?? NULL;
+
+            $previous_datacite_value = $full_original['ap:tasks']['ap:fragaria'][$api] ?? NULL;
             // Because of function Signature we will cast to array just in case
             $previous_datacite_value = (array) $previous_datacite_value;
             unset($full_original);
