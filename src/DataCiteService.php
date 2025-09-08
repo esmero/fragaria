@@ -382,8 +382,18 @@ class DataCiteService {
           elseif ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] != $previous_ap_task_passed_array[3]) {
             // This is wrong. One DOI per ADO. If the user is trying to connect a new one to this, but our state says we already have one.
             // Means we need to read from the remote the original one, and decide based on that.
-            $calls[] = ['api' => 'info', 'doi' => $previous_ap_task_passed_array[3]];
-            $calls[] = ['api' => 'info', 'doi' => $ap_task_passed_array[3]];
+            // check if
+            $check_original_doi = $this->fetchDOI($previous_ap_task_passed_array[3]);
+            $old_doi = NULL;
+            $old_status = NULL;
+            $old_url = NULL;
+            if ($check_original_doi[0] == TRUE) {
+              $old_doi = $check_original_doi['data']['attributes']['doi'] ?? $old_doi;
+              $old_status = $check_original_doi['data']['attributes']['state'] ?? $old_status;
+              $old_url = $check_original_doi['data']['attributes']['state'] ?? $old_url;
+            }
+            $check_new_doi = $this->fetchDOI($ap_task_passed_array[3]);
+
             // IF the old one is DRAFT. We can delete it, and generate the new one. IF not, then we need to make the OLD one the new $DOI;
             // If the old is not under our control (anymore) or gone, we can use the NEW one and move from there.
           }
