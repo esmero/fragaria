@@ -92,7 +92,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       '#type' => 'checkbox',
       '#title' => $this->t('DOI/DataCite REST API interaction is Active'),
       '#default_value' => (bool) $config->get(
-        'active', FALSE)
+        'active') ?? FALSE
     ];
 
     $form['simulate'] = [
@@ -100,7 +100,15 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       '#title' => $this->t('Simulate without talking to DataCite'),
       '#description' => $this->t('When enabled and this checked, Fake DOIs will be generated and no DataCite API interaction will happen, but all other internal features like Workflow transitions, Metadata validation and Deletion prevention will work as expected. Useuful when evaluating DOI workflows without (yet) a DataCite Subscription.'),
       '#default_value' => (bool) $config->get(
-        'simulate', FALSE)
+        'simulate') ?? FALSE
+    ];
+
+    $form['use_do_url'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Always use do/{uuid} as the URL'),
+      '#description' => $this->t('If disabled the current alias (canonical URL) of the NODE will be used. When enabled , all URLs sent to DataCite will be in the form of (https|http)//:{yourdomain}/do/{uuid}. We recommend you use always use the do/uuid alias for ADOs or enable in this module the automatic workaround. '),
+      '#default_value' => (bool) $config->get(
+      'use_do') ?? TRUE
     ];
 
     $form['repository_fabrica_user'] = [

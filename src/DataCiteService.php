@@ -11,6 +11,7 @@ use Drupal\Core\Render\RenderContext;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\Core\Url;
 use Drupal\strawberryfield\Tools\StrawberryfieldJsonHelper;
 use GuzzleHttp\ClientInterface;
 use Drupal\Core\Render\RendererInterface;
@@ -319,14 +320,22 @@ class DataCiteService {
         // MMMM.
         return;
       }
+
+      if ($this->config->get('use_do_url')) {
+          $ado_url = Url::fromRoute('<front>')->setAbsolute();
+          $ado_url = $ado_url->toString(FALSE)."/do/" . $entity->uuid();
+      }
+      else {
+        $ado_url = $entity->toUrl('canonical', ['absolute' => TRUE])->toString();
+      }
+
+      // @TODO: future. Keep checksum of previously generate metadata. Check if new == old. If so, don't push?
+      $generate_metadata = TRUE;
+      $calls = [];
+      $ap_task_to_save = [];
       // Now validate both. We are going to use a decision matrix to decide how to proceed.
       // Super important. The only reason "event" from a previous version might be stored and passed around is IF
       // the status of that event was "error". We don't preserve the Last Event request, only the final status.
-      // List of actions
-      $generate_metadata = FALSE;
-      $calls = [];
-      $ap_task_to_save = [];
-
       $ap_task_passed_array = $this->validateApTask($datacite_trigger);
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
 
@@ -334,26 +343,26 @@ class DataCiteService {
       // Key 1 holds the Event. Previous data should never have an Event except if errored (so we can replay)
       // Key 2 holds status
       // Key 3 holds the DOI, if any.
-      // @TODO. Make this veru long chunk of nexted if/else reusable method and simpler.
+      // @TODO. Make this very long chunk of nested if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
       if ($ap_task_passed_array[0] == $previous_ap_task_passed_array[0] && $ap_task_passed_array[0] == TRUE) {
         // Most simple ones. No previous data
         // NO DOI (previous or new)
         if ($ap_task_passed_array[3] == NULL && $ap_task_passed_array[3] == NULL) {
           if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'draft') {
-            $generate_metadata = TRUE;
+
             $calls[] = ['api' => 'create', 'event' => NULL];
             // call API with empty event. NO DOI passed neither
           }
           elseif (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'register') {
-            $generate_metadata = TRUE;
+
             // OK this here is chained. How do I logically do that?
             $calls[] = ['api' => 'create', 'event' => NULL];
             $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
           }
           elseif (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'publish') {
-            $generate_metadata = TRUE;
+
             $calls[] = ['api' => 'create', 'event' => 'publish'];
             // call API with publish event.
           }
@@ -383,26 +392,26 @@ class DataCiteService {
             // Now we can finally evaluate if the event can be run
             if ($ap_task_passed_array[2] == "draft" && $previous_ap_task_passed_array[1] == "draft") {
               // Nothing to do other than Updating metadata.
-              $generate_metadata = TRUE;
+
               $calls[] = ['api' => 'update', 'event' => 'draft', 'doi' => $ap_task_passed_array[3]];
             }
             elseif ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
               // This requires an UPDATE status call.
-              $generate_metadata = TRUE;
+
               $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => $ap_task_passed_array[3]];
             }
             elseif ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
-              $generate_metadata = TRUE;
+
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
             elseif ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "registered" && $entity_status) {
-              $generate_metadata = TRUE;
+
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
             elseif ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "findable" && $entity_status) {
-              $generate_metadata = TRUE;
+
               $calls[] = ['api' => 'update', 'event' => 'hide', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call to "hide" it.
             }
@@ -420,34 +429,54 @@ class DataCiteService {
         // IF No DOI but previous had a DOI
         elseif ($ap_task_passed_array[3] === NULL && $previous_ap_task_passed_array[3] !== NULL) {
           // the user might have manipulated the updated array. Wrong. But we had one before.
-          // Restore the old one. There is ONLY one situation here that requires us to act differently.
-          // IF the previous status was 'error'.
+          $ap_task_to_save = $previous_ap_task_passed_array[3];
+          if ($previous_ap_task_passed_array[2] == "error") {
+            $ap_task_to_save[2] = NULL; // Unset status. Let the Event run in the future. Not in this run?
+          }
+          // Restore the old one. There might be ONLY one situation here that requires us to act differently.
+          // IF the previous status was 'error'. But that should either resolve again in replaying?
         }
         else {
-        // What is the else condition? @TODO. Re-Read your own code Diego!
+          // What is the else condition? @TODO. Re-Read your own code Diego!
+        }
+      }
+      elseif ($previous_ap_task_passed_array[0] == TRUE && $ap_task_passed_array[0] == FALSE) {
+        // Previous is OK, new one is not Valid.
+        $ap_task_to_save = $previous_ap_task_passed_array[0];
+      }
+      else {
+        // Both are Wrong. Nothing to do.
+      }
+      // So if the previous one is invalid and the new one is valid?
+      // Should never happen but there are edge cases. e.g the Structure was pushed into the ADO but
+      // DataCite was not enabled. So it lingers around.
+      if (count($calls)) {
+        // Call the APIs.
+        // Let's generate metadata first.
+        $data_cite_metadata = $this->castADOtoDataCite($fullvalues, $entity, $workflow_status);
+        if ($data_cite_metadata !== NULL) {
+          $data_cite_metadata['url'] = $ado_url;
+
+          foreach ($calls as $call) {
           }
         }
-      else {
-        // Previous is OK, new one is not Valid.
-        if ($previous_ap_task_passed_array[0] == TRUE && $previous_ap_task_passed_array[0] == FALSE) {
-          $ap_task_to_save = $previous_ap_task_passed_array[0];
+        else {
+          // Wrong metadata.
         }
-        // So if the previous one is invalid and the new one is valid?
-        // Should never happen but there are edge cases. e.g the Structure was pushed into the ADO but
-        // DataCite was not enabled. So it lingers around.
       }
-
-
-
-      // A new datacite_trigger being NULL is valid if we e.g. generated a Draft, and we want to delete it now.
-      // But only IF there is a previous valid (with a DOI present) version in the pre-save.
-      // Also, unpublished records can only have Drafts. Ok?
-      // We don't make the transition automatically to Registered
-
-      //@TODO reset $ap_task_to_save;
-
     }
+
+
+
+    // A new datacite_trigger being NULL is valid if we e.g. generated a Draft, and we want to delete it now.
+    // But only IF there is a previous valid (with a DOI present) version in the pre-save.
+    // Also, unpublished records can only have Drafts. Ok?
+    // We don't make the transition automatically to Registered
+
+    //@TODO reset $ap_task_to_save;
+
   }
+
 
   public function validateDOI(string $doi) {
     if (str_starts_with($doi, $this->config->get('doi_prefix'))) {
