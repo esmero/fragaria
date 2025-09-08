@@ -307,37 +307,46 @@ class DataCiteService {
 
       $ap_task_passed_array = $this->validateApTask($datacite_trigger);
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
+
+      // Key 0 holds if Valid
+      // Key 1 holds the Event. Previous data should never have an Event except if errored (so we can replay)
+      // Key 2 holds status
+      // Key 3 holds the DOI, if any.
+      // @TODO. Make this veru long chunk of nexted if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
       if ($ap_task_passed_array[0] == $previous_ap_task_passed_array[0] && $ap_task_passed_array[0] == TRUE) {
         // Most simple ones. No previous data
-        // First we check if we have no DOI (previous or new)
+        // NO DOI (previous or new)
         if ($ap_task_passed_array[3] == NULL && $ap_task_passed_array[3] == NULL) {
           if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'draft') {
             $generate_metadata = TRUE;
             $calls[] = ['api' => 'create', 'event' => NULL];
             // call API with empty event. NO DOI passed neither
           }
-          if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'register') {
+          elseif (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'register') {
             $generate_metadata = TRUE;
             $calls[] = ['api' => 'create', 'event' => NULL];
             $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
           }
-          if (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'publish') {
+          elseif (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'publish') {
             $generate_metadata = TRUE;
             $calls[] = ['api' => 'create', 'event' => 'publish'];
             // call API with publish event.
           }
+          else {
+            // What is else under NO DOI?
+          }
         }
-        // Now check if the new data holds a DOI
-        if ($ap_task_passed_array[3] !== NULL) {
+        // DOI IN NEW DATA
+        elseif  ($ap_task_passed_array[3] !== NULL) {
           // If we have an ADO, the workflow combo restrictions come in place.
           // Deal first with the most complex scenario. The user is providing a MANUAL DOI, and we have no previous history of it.
           if ($previous_ap_task_passed_array[3] == NULL && $entity_status) {
             $calls[] = ['api' => 'info', 'doi' => $ap_task_passed_array[3]];
             // Means we need to call the API and figure out if we have control over it, and IF we can execute the desired state.
           }
-          if ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] != $previous_ap_task_passed_array[3]) {
+          elseif ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] != $previous_ap_task_passed_array[3]) {
             // This is wrong. One DOI per ADO. If the user is trying to connect a new one to this, but our state says we already have one.
             // Means we need to read from the remote the original one, and decide based on that.
             $calls[] = ['api' => 'info', 'doi' => $previous_ap_task_passed_array[3]];
@@ -346,51 +355,62 @@ class DataCiteService {
             // If the old is not under our control (anymore) or gone, we can use the NEW one and move from there.
           }
           // Finally the expected/simpler one when users don't mess with task data. Previous and New have the same DOI.
-          if ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] == $previous_ap_task_passed_array[3]) {
-           // Now we can finally evaluate if the event can be run
+          elseif ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] == $previous_ap_task_passed_array[3]) {
+            // Now we can finally evaluate if the event can be run
             if ($ap_task_passed_array[2] == "draft" && $previous_ap_task_passed_array[1] == "draft") {
               // Nothing to do other than Updating metadata.
               $generate_metadata = TRUE;
               $calls[] = ['api' => 'update', 'event' => 'draft', 'doi' => $ap_task_passed_array[3]];
             }
-            if ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
               // This requires an UPDATE status call.
               $generate_metadata = TRUE;
               $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => $ap_task_passed_array[3]];
             }
-            if ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "draft" && $entity_status) {
               $generate_metadata = TRUE;
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
-            if ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "registered" && $entity_status) {
+            elseif ($ap_task_passed_array[2] == "publish" && $previous_ap_task_passed_array[1] == "registered" && $entity_status) {
               $generate_metadata = TRUE;
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call.
             }
-            if ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "findable" && $entity_status) {
+            elseif ($ap_task_passed_array[2] == "register" && $previous_ap_task_passed_array[1] == "findable" && $entity_status) {
               $generate_metadata = TRUE;
               $calls[] = ['api' => 'update', 'event' => 'hide', 'doi' => $ap_task_passed_array[3]];
               // This requires an UPDATE status call to "hide" it.
             }
-            if ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] !== "draft") {
+            elseif ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] !== "draft") {
               // This is an error. And in that case we bail out.
             }
-            if ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] === "draft") {
+            elseif ($ap_task_passed_array[2] == "delete" && $previous_ap_task_passed_array[1] === "draft") {
               $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array[3]];
+            }
+            else {
+              // What is else here?
             }
           }
         }
-        if ($ap_task_passed_array[3] === NULL && $previous_ap_task_passed_array[3] !== NULL) {
+        // IF No DOI but previous had a DOI
+        elseif ($ap_task_passed_array[3] === NULL && $previous_ap_task_passed_array[3] !== NULL) {
           // the user might have manipulated the updated array. Wrong. But we had one before.
           // Restore the old one. There is ONLY one situation here that requires us to act differently.
           // IF the previous status was 'error'.
         }
-   }
+        else {
+        // What is the else condition? @TODO. Re-Read your own code Diego!
+          }
+        }
       else {
-        if ($previous_ap_task_passed_array[0] == TRUE && $ap_task_passed_array[0] == FALSE) {
+        // Previous is OK, new one is not Valid.
+        if ($previous_ap_task_passed_array[0] == TRUE && $previous_ap_task_passed_array[0] == FALSE) {
           $ap_task_to_save = $previous_ap_task_passed_array[0];
         }
+        // So if the previous one is invalid and the new one is valid?
+        // Should never happen but there are edge cases. e.g the Structure was pushed into the ADO but
+        // DataCite was not enabled. So it lingers around.
       }
 
 
@@ -435,7 +455,7 @@ class DataCiteService {
     else {
       if (is_array($datacite_metadata) &&
         in_array(($datacite_metadata['event'] ?? NULL),static::DATACITE_FRAGARIA_VALID_EVENTS)) {
-          $requested_event = $datacite_metadata['event'];
+        $requested_event = $datacite_metadata['event'];
         // Here we know we have an event. The validation now is a bit deeper.
         // Status should only exist IF error/or if we have a DOI.
         // Note. Status might have been removed. Should not be the case, but we will
