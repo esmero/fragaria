@@ -276,6 +276,7 @@ class DataCiteService {
    */
   public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value):array {
     // Just in case.
+    $ap_task_to_save = [];
     if ($this->isActive()) {
       // What we need.
       // A) Do we have ['ap:tasks']['ap:fragaria']['datacite'] ?
@@ -312,7 +313,7 @@ class DataCiteService {
       }
 
       $calls = [];
-      $ap_task_to_save = [];
+
       // Now validate both. We are going to use a decision matrix to decide how to proceed.
       // Super important. The only reason "event" from a previous version might be stored and passed around is IF
       // the status of that event was "error". We don't preserve the Last Event request, only the final status.
@@ -445,7 +446,7 @@ class DataCiteService {
           // What is the else condition? @TODO. Re-Read your own code Diego!
         }
       }
-      elseif ($previous_ap_task_passed_array[0] == TRUE && $ap_task_passed_array[0] == FALSE) {
+      elseif ($previous_ap_task_passed_array[0] && !$ap_task_passed_array[0]) {
         // Previous is OK, new one is not Valid.
         $ap_task_to_save = $previous_ap_task_passed_array[0];
       }
