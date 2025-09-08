@@ -37,8 +37,6 @@ class DataCiteService {
    *
    */
   private const DATACITE_FRAGARIA_VALID_EVENTS = ['draft','register','publish', 'delete'];
-
-
   private const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error'];
 
   /**
@@ -325,6 +323,7 @@ class DataCiteService {
           }
           elseif (($previous_ap_task_passed_array[2] == NULL) && $ap_task_passed_array[2] == 'register') {
             $generate_metadata = TRUE;
+            // OK this here is chained. How do I logically do that?
             $calls[] = ['api' => 'create', 'event' => NULL];
             $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
@@ -335,7 +334,7 @@ class DataCiteService {
             // call API with publish event.
           }
           else {
-            // What is else under NO DOI?
+            // What is else under NO DOI? Wrong combo of operations?
           }
         }
         // DOI IN NEW DATA
@@ -344,7 +343,8 @@ class DataCiteService {
           // Deal first with the most complex scenario. The user is providing a MANUAL DOI, and we have no previous history of it.
           if ($previous_ap_task_passed_array[3] == NULL && $entity_status) {
             $calls[] = ['api' => 'info', 'doi' => $ap_task_passed_array[3]];
-            // Means we need to call the API and figure out if we have control over it, and IF we can execute the desired state.
+            // Means we need to call the API and figure out if we have control over it.
+            // For this scenario we need event to be NULL? Adding a "connect" event would be more explicit though.
           }
           elseif ($previous_ap_task_passed_array[3] !== NULL && $ap_task_passed_array[3] != $previous_ap_task_passed_array[3]) {
             // This is wrong. One DOI per ADO. If the user is trying to connect a new one to this, but our state says we already have one.
@@ -448,6 +448,7 @@ class DataCiteService {
     $valid = TRUE;
     $requested_event = NULL;
     $current_status = NULL;
+    $DOI = NULL;
     // NULL is valid. Like no data.
     if ($datacite_metadata == NULL) {
       return [TRUE, NULL, $current_status];
@@ -476,7 +477,22 @@ class DataCiteService {
         }
       }
       else {
+        // No event. Which is valid because we delete the EVENT ONCE WE SET A STATUS.
+        // SO A RE-SAVE using RAW JSON or a programmatic Update via VBO will not re-set an event?
+        // To be safe here. We assume the opposite, that it is invalid.
         $valid = FALSE;
+        // Here we demand a status/DOI combo.
+        if (isset($datacite_metadata['status'])) {
+          if (in_array($datacite_metadata['status'], static::DATACITE_FRAGARIA_VALID_STATUSES)) {
+            $current_status = $datacite_metadata['status'];
+            if (isset($datacite_metadata['doi']) && is_string($datacite_metadata['doi'])) {
+              $valid = $this->validateDOI($datacite_metadata['doi']);
+              if ($valid) {
+                $DOI = $datacite_metadata['doi'];
+              }
+            }
+          }
+        }
       }
     }
     return [$valid, $requested_event, $current_status, $DOI];
