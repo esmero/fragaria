@@ -3,11 +3,11 @@
 namespace Drupal\Fragaria\EventSubscriber;
 
 use Drupal\strawberryfield\Event\StrawberryfieldCrudEvent;
+use Drupal\strawberryfield\EventSubscriber\StrawberryfieldEventPresaveSubscriber;
 use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslationInterface;
 use Drupal\Core\Logger\LoggerChannelFactoryInterface;
-use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\fragaria\DataCiteService;
 
@@ -106,7 +106,19 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
             unset($full_original);
           }
           // Now with this data in hand we can start the workflow.
-          $this->dataCiteService->evaluateWorkflow($entity,$full,$previous_datacite_value);
+          $ap_task_from_workflow = $this->dataCiteService->evaluateWorkflow($entity,$full,$previous_datacite_value);
+          if ($ap_task_from_workflow !== NULL) {
+            $full['ap:tasks']['ap:fragaria'][$api] = $ap_task_from_workflow;
+            if (!$itemfield->setMainValueFromArray((array) $full)) {
+              $message = $this->t(
+                'We could not persist DOI JSON via Metadata Display "@metadatadisplay" into future ADO with UUID @uuid.',
+                [
+                  '@metadatadisplayid' => $metadatadisplay_entity->label(),
+                  '@uuid' => $entity->uuid(),
+                ]
+              );
+            }
+          }
         }
       }
       $current_class = get_called_class();

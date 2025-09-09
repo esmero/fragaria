@@ -91,7 +91,7 @@ class DataCiteService {
    * @param \GuzzleHttp\ClientInterface $httpClient
    * @param \Drupal\Core\Render\RendererInterface $renderer
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ConfigFactoryInterface $configFactory, LoggerChannelFactoryInterface $loggerFactory, AccountInterface $currentUser, ClientInterface $httpClient, RendererInterface $renderer) {
+  public function __construct(EntityTypeManagerInterface $entityTypeManager, ConfigFactoryInterface $configFactory,  AccountInterface $currentUser, LoggerChannelFactoryInterface $loggerFactory, ClientInterface $httpClient, RendererInterface $renderer) {
     $this->entityTypeManager = $entityTypeManager;
     $this->config = $configFactory->get(
       'fragaria.datacite'
@@ -172,7 +172,7 @@ class DataCiteService {
       ]);
       $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
       $response_encoded = $sucessfull ? json_decode($response->getBody()
-        ->getContents()) : [];
+        ->getContents(), TRUE) : [];
     }
     return [$sucessfull, $response_encoded];
   }
@@ -198,7 +198,7 @@ class DataCiteService {
         ],
       ]);
       $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
-      $response_encoded = $sucessfull ? json_decode($response->getBody()->getContents()) : [];
+      $response_encoded = $sucessfull ? json_decode($response->getBody()->getContents(), TRUE) : [];
     }
     return [$sucessfull, $response_encoded];
   }
@@ -226,7 +226,7 @@ class DataCiteService {
       ]);
       $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
       $response_encoded = $sucessfull ? json_decode($response->getBody()
-        ->getContents()) : [];
+        ->getContents(), TRUE) : [];
     }
     return [$sucessfull, $response_encoded];
   }
@@ -324,20 +324,23 @@ class DataCiteService {
         // Most simple ones. No previous data
         // NO DOI (previous or new)
         if ($ap_task_passed_array['doi'] == NULL && $previous_ap_task_passed_array['doi'] == NULL) {
-          if (($previous_ap_task_passed_array['status'] == NULL) && $ap_task_passed_array['status'] == 'draft') {
+          // If we don't have a DOI on the previous data then whatever status is there is irrelevant
+          if ($ap_task_passed_array['event'] == 'draft') {
             $calls[] = ['api' => 'create', 'event' => NULL];
             // call API with empty event. NO DOI passed neither
           }
-          elseif (($previous_ap_task_passed_array['status'] == NULL) && $ap_task_passed_array['status'] == 'register') {
+          elseif ($ap_task_passed_array['event'] == 'register' && $entity_status) {
             $calls[] = ['api' => 'create', 'event' => NULL];
             $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
           }
-          elseif (($previous_ap_task_passed_array['status'] == NULL) && $ap_task_passed_array['status'] == 'publish') {
+          elseif ($ap_task_passed_array['event'] == 'publish' && $entity_status) {
             $calls[] = ['api' => 'create', 'event' => 'publish'];
             // call API with publish event.
           }
           else {
+            error_log('unhandled DOI rule');
+            // IF entity status is not published we can not run Publish or register.
             // What is else under NO DOI? Wrong combo of operations?
           }
         }
@@ -356,7 +359,7 @@ class DataCiteService {
           // Deal first with the most complex scenario. The user is providing a MANUAL DOI, and we have no previous history of it.
           $doi = NULL;
           $doi_status = NULL;
-          if ($previous_ap_task_passed_array['doi'] == NULL && $entity_status) {
+          if ($previous_ap_task_passed_array['doi'] == NULL) {
             $check_new_doi = $this->fetchDOI($ap_task_passed_array['doi']);
             if ($check_new_doi[0]) {
               $doi = $check_new_doi['data']['attributes']['doi'] ?? $doi;
@@ -377,8 +380,8 @@ class DataCiteService {
             $check_original_doi = $this->fetchDOI($previous_ap_task_passed_array['doi']);
             // I could check for URL, but if the user decided to use aliases and the alias changed I won't have a clue here.
             if ($check_original_doi[0]) {
-              $doi = $check_original_doi['data']['attributes']['doi'] ?? $doi;
-              $doi_status = $check_original_doi['data']['attributes']['state'] ?? $doi_status;
+              $doi = $check_original_doi[1]['data']['attributes']['doi'] ?? $doi;
+              $doi_status = $check_original_doi[1]['data']['attributes']['state'] ?? $doi_status;
               // No workflow to be done. But we should restore the old data though.
               // But no Event?
               $previous_ap_task_passed_array['status'] = $doi_status;
@@ -391,8 +394,8 @@ class DataCiteService {
               // In this case we can actually keep evaluating.
               $check_new_doi = $this->fetchDOI($ap_task_passed_array['doi']);
               if ($check_new_doi[0]) {
-                $doi = $check_new_doi['data']['attributes']['doi'] ?? $doi;
-                $doi_status = $check_new_doi['data']['attributes']['state'] ?? $doi_status;
+                $doi = $check_new_doi[1]['data']['attributes']['doi'] ?? $doi;
+                $doi_status = $check_new_doi[1]['data']['attributes']['state'] ?? $doi_status;
                 // To make this work, we will set the Old data to the known data from the API.
                 $previous_ap_task_passed_array['status'] = $doi_status;
                 $previous_ap_task_passed_array['doi'] = $doi;
@@ -432,11 +435,13 @@ class DataCiteService {
             }
             elseif ($ap_task_passed_array[1] == "delete" && $previous_ap_task_passed_array['status'] !== "draft") {
               // This is an error. And in that case we bail out.
+              // @LOGG error
             }
             elseif ($ap_task_passed_array[1] == "delete" && $previous_ap_task_passed_array['status'] === "draft") {
               $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array['doi']];
             }
             else {
+              error_log('unhandled DOI combo rule');
               // What is else here?
             }
           }
@@ -484,8 +489,8 @@ class DataCiteService {
               $response = $this->requestDOI($data_wrapper_create);
               if ($response[0]) {
                 // DOI will  bet set by this one and reused in others, if any.
-                $doi = $response['data']['attributes']['doi'];
-                $status = $response['data']['attributes']['state'];
+                $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
+                $status = $response[1]['data']['attributes']['state'] ?? NULL;
               }
             }
             elseif ($call['api'] == 'update') {
@@ -497,8 +502,8 @@ class DataCiteService {
                 }
                 $response = $this->updateDOI($data_wrapper_update, $doi_update);
                 if ($response[0]) {
-                  $doi = $response['data']['attributes']['doi'];
-                  $status = $response['data']['attributes']['state'];
+                  $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
+                  $status = $response[1]['data']['attributes']['state'] ?? NULL;
                 }
               }
             }
