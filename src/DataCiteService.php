@@ -267,14 +267,15 @@ class DataCiteService {
    * @param array $fullvalues
    * @param array|null $previous_data_cite_value
    *
-   * @return array
+   * @return array|null
+   *    Array if we need to update the original data, NULL if no update is needed.
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    * @throws \Drupal\Core\Entity\EntityMalformedException
    * @throws \Drupal\Core\TypedData\Exception\MissingDataException
    * @throws \GuzzleHttp\Exception\GuzzleException
    */
-  public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value):array {
+  public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value): ?array {
     // Just in case.
     $ap_task_parsed_data = [];
     if ($this->isActive()) {
@@ -299,9 +300,7 @@ class DataCiteService {
       if ($datacite_trigger == NULL && $previous_data_cite_value == NULL) {
         // Nothing to do here, nobody is requesting anything or APIs don't match
         // But we won't act on a non-active API.
-        // TODO. Maybe write drush/route callbacks that allow to act on a non active API?
-        // MMMM.
-        return [];
+        return NULL;
       }
 
       if ($this->config->get('use_do_url')) {
@@ -380,11 +379,14 @@ class DataCiteService {
             if ($check_original_doi[0]) {
               $doi = $check_original_doi['data']['attributes']['doi'] ?? $doi;
               $doi_status = $check_original_doi['data']['attributes']['state'] ?? $doi_status;
-              // Nothing to be done here. But we should restore the old data though.
+              // No workflow to be done. But we should restore the old data though.
               // But no Event?
+              $previous_ap_task_passed_array['status'] = $doi_status;
+              $previous_ap_task_passed_array['doi'] = $doi;
               $ap_task_parsed_data = $previous_ap_task_passed_array;
             }
             else {
+              // @LOG First Fetch failure
               // Only if the original one does not exist. DOIs are expensive.
               // In this case we can actually keep evaluating.
               $check_new_doi = $this->fetchDOI($ap_task_passed_array['doi']);
@@ -396,7 +398,8 @@ class DataCiteService {
                 $previous_ap_task_passed_array['doi'] = $doi;
               }
               else {
-                // No lick with previos one neither
+                // No luck with previous one neither
+                // @LOG Fetch failure
               }
             }
           }
@@ -444,8 +447,9 @@ class DataCiteService {
         }
       }
       elseif ($previous_ap_task_passed_array['valid'] && !$ap_task_passed_array['valid']) {
-        // Previous is OK, new one is not Valid. This includes a previously errored one.
+        // Previous is OK, new one is not Valid. This includes a previously errored one though. So no action.
         $ap_task_parsed_data = $previous_ap_task_passed_array;
+        $calls = [];
       }
       else {
         // Both wrong. If invalid. We delete right? Yeah.
@@ -509,9 +513,14 @@ class DataCiteService {
           }
         }
         else {
-          // Wrong metadata.
+          $ap_task_parsed_data = [];
         }
       }
+      $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
+      return $datacite_metadata;
+    }
+    else {
+      return NULL;
     }
 
 
@@ -521,8 +530,7 @@ class DataCiteService {
     // Also, unpublished records can only have Drafts. Ok?
     // We don't make the transition automatically to Registered
 
-    $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
-    return $datacite_metadata;
+
   }
 
 
