@@ -245,7 +245,7 @@ class DataCiteService {
     $status = FALSE;
     if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
       $api_url = $api_url_and_credentials[0] . trim($doi);
-      $response = $this->httpClient->request('DELET', $api_url, [
+      $response = $this->httpClient->request('DELETE', $api_url, [
         'headers' => [
           'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2])
         ],
@@ -410,34 +410,34 @@ class DataCiteService {
           // Finally the expected/simpler one when users don't mess with task data. Previous and New have the same DOI.
           if ($previous_ap_task_passed_array['doi'] !== NULL && $ap_task_passed_array['doi'] == $previous_ap_task_passed_array['doi']) {
             // Now we can finally evaluate if the event can be run
-            if ($ap_task_passed_array[1] == "draft" && $previous_ap_task_passed_array['status'] == "draft") {
+            if ($ap_task_passed_array['event'] == "draft" && $previous_ap_task_passed_array['status'] == "draft") {
               // Nothing to do other than Updating metadata.
               $calls[] = ['api' => 'update', 'event' => 'draft', 'doi' => $ap_task_passed_array['doi']];
             }
-            elseif ($ap_task_passed_array[1] == "register" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
               // This requires an UPDATE status call.
               $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => $ap_task_passed_array['doi']];
             }
-            elseif ($ap_task_passed_array[1] == "publish" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
 
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call.
             }
-            elseif ($ap_task_passed_array[1] == "publish" && $previous_ap_task_passed_array['status'] == "registered" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "registered" && $entity_status) {
 
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call.
             }
-            elseif ($ap_task_passed_array[1] == "register" && $previous_ap_task_passed_array['status'] == "findable" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "findable" && $entity_status) {
 
               $calls[] = ['api' => 'update', 'event' => 'hide', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call to "hide" it.
             }
-            elseif ($ap_task_passed_array[1] == "delete" && $previous_ap_task_passed_array['status'] !== "draft") {
+            elseif ($ap_task_passed_array['event'] == "delete" && $previous_ap_task_passed_array['status'] !== "draft") {
               // This is an error. And in that case we bail out.
               // @LOGG error
             }
-            elseif ($ap_task_passed_array[1] == "delete" && $previous_ap_task_passed_array['status'] === "draft") {
+            elseif ($ap_task_passed_array['event'] == "delete" && $previous_ap_task_passed_array['status'] === "draft") {
               $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array['doi']];
             }
             else {
