@@ -28,6 +28,8 @@ class DataCiteService {
 
   private const LOGGER_NAME = 'fragaria_datacite';
 
+  private const LOGGER_NAME_PEPPERMINT = 'fragaria_datacite_peppermint';
+
   /** @var string[]
    * 'register' os not a valid Data Cite event. But our action of
    *  A) Drafting (REST API without event) and the Updating the status OR
@@ -108,6 +110,13 @@ class DataCiteService {
     $handler->setFormatter(new JsonFormatter());
     $log->pushHandler($handler);
     $this->loggerFactory->get(static::LOGGER_NAME)->setLoggers([[$log]]);
+
+    $log_good_things = new Logger(static::LOGGER_NAME_PEPPERMINT);
+    $private_path = \Drupal::service('stream_wrapper_manager')->getViaUri('private://')->getDirectoryPath();
+    $handler = new StreamHandler($private_path . '/fragaria/logs/datacite_peppermint.log', Logger::DEBUG);
+    $handler->setFormatter(new JsonFormatter());
+    $log_good_things->pushHandler($handler);
+    $this->loggerFactory->get(static::LOGGER_NAME_PEPPERMINT)->setLoggers([[$log_good_things]]);
   }
 
 
@@ -321,9 +330,8 @@ class DataCiteService {
       // @TODO. Make this very long chunk of nested if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
       if (($ap_task_passed_array['valid'] == $previous_ap_task_passed_array['valid']) && $ap_task_passed_array['valid']) {
-        // Pre set this. Worst case scenario we will return the same data.
+        // Pre-set this. Worst case scenario we will return the same data.
         $ap_task_parsed_data = $ap_task_passed_array;
-
         // Most simple ones. No previous data
         // NO DOI (previous or new)
         if ($ap_task_passed_array['doi'] == NULL && $previous_ap_task_passed_array['doi'] == NULL) {
@@ -342,7 +350,11 @@ class DataCiteService {
             // call API with publish event.
           }
           else {
-            error_log('unhandled DOI rule');
+            $message = $this->t('Wrong Data Cite Event/ADO Status combination. We could not run your DOI workflow for ADO with UUID @uuid. Check your ap:task key values.',
+              [
+                '@uuid' => $entity->uuid(),
+              ]);
+            $workflow_status['errors'][] = $message;
             // IF entity status is not published we can not run Publish or register.
             // What is else under NO DOI? Wrong combo of operations?
           }
@@ -352,6 +364,12 @@ class DataCiteService {
           // Restore it.
           $ap_task_passed_array = $previous_ap_task_passed_array;
           $ap_task_parsed_data = $ap_task_passed_array;
+          $message = $this->t('You already had a DOI @doi for ADO with UUID @uuid. If your DOI is a draft use the "delete" event to remove it. If under any other state, you can no longer delete it via Archipelago. Restoring old data.',
+            [
+              '@uuid' => $entity->uuid(),
+              '@doi' => $previous_ap_task_passed_array['doi'],
+            ]);
+          $workflow_status['errors'][] = $message;
           // Restore the old one. There might be ONLY one situation here that requires us to act differently.
           // IF the previous status was 'error'. But that should either resolve again in replaying?
         }
@@ -372,8 +390,12 @@ class DataCiteService {
               $ap_task_parsed_data = $previous_ap_task_passed_array;
             }
             else {
-              // API call failed.
-              // The DOI in questions does not belong to us.
+              $message = $this->t('Wrong Data Cite DOI @doi. We could not verify the DOI status via a remote API call for ADO with UUID @uuid. Check your ap:task key values.',
+                [
+                  '@uuid' => $entity->uuid(),
+                  '@doi' =>$previous_ap_task_passed_array['doi'],
+                ]);
+              $workflow_status['errors'][] = $message;
             }
           }
 
@@ -393,6 +415,12 @@ class DataCiteService {
               $ap_task_parsed_data = $previous_ap_task_passed_array;
             }
             else {
+              $message = $this->t('Wrong Data Cite DOI @doi. We could not verify the status via a remote API call for ADO with UUID @uuid. Check your ap:task key values.',
+                [
+                  '@uuid' => $entity->uuid(),
+                  '@doi' => $previous_ap_task_passed_array['doi'],
+                ]);
+              $workflow_status['errors'][] = $message;
               // @LOG First Fetch failure
               // Only if the original one does not exist. DOIs are expensive.
               // In this case we can actually keep evaluating.
@@ -406,8 +434,12 @@ class DataCiteService {
                 $ap_task_parsed_data = $previous_ap_task_passed_array;
               }
               else {
-                // No luck with previous one neither
-                // @LOG Fetch failure
+                $message = $this->t('Wrong Data Cite DOI @doi. We could not verify the status via a remote API call for ADO with UUID @uuid. Check your ap:task key values.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                    '@doi' => $ap_task_passed_array['doi'],
+                  ]);
+                $workflow_status['errors'][] = $message;
               }
             }
           }
@@ -443,32 +475,41 @@ class DataCiteService {
               // This requires an UPDATE status call to "hide" it.
             }
             elseif ($ap_task_passed_array['event'] == "delete" && $previous_ap_task_passed_array['status'] !== "draft") {
-              // This is an error. And in that case we bail out.
-              // @LOGG error
+              $message = $this->t('Wrong Data Cite Event "Delete" request for DOI @doi for ADO with UUID @uuid. You can not delete a non draft DOI.',
+                [
+                  '@uuid' => $entity->uuid(),
+                  '@doi' => $ap_task_passed_array['doi'],
+                ]);
+              $workflow_status['errors'][] = $message;
             }
             elseif ($ap_task_passed_array['event'] == "delete" && $previous_ap_task_passed_array['status'] === "draft") {
               $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array['doi']];
             }
             else {
-              error_log('unhandled DOI combo rule');
+              $message = $this->t('Wrong Data Cite Event Transition Combination for DOI @doi for ADO with UUID @uuid.',
+                [
+                  '@uuid' => $entity->uuid(),
+                  '@doi' => $ap_task_passed_array['doi'],
+                ]);
+              $workflow_status['errors'][] = $message;
               // What is else here?
             }
           }
-        }
-        // IF No DOI but previous had a DOI
-        else {
-          // What is the else condition? @TODO. Re-Read your own code Diego!
         }
       }
       elseif ($previous_ap_task_passed_array['valid'] && !$ap_task_passed_array['valid']) {
         // Previous is OK, new one is not Valid. This includes a previously errored one though. So no action.
         $ap_task_parsed_data = $previous_ap_task_passed_array;
-        $calls = [];
       }
       else {
         // Both wrong. If invalid. We delete right? Yeah.
         $ap_task_parsed_data = [];
-        $calls = [];
+        $message = $this->t('Your API DataCite Task data is invalid. Removing it from ADO with UUID @uuid',
+          [
+            '@uuid' => $entity->uuid(),
+            '@doi' =>$previous_ap_task_passed_array['doi'],
+          ]);
+        $workflow_status['errors'][] = $message;
       }
       // So if the previous one is invalid and the new one is valid?
       // Should never happen but there are edge cases. e.g. the Structure was pushed into the ADO but
@@ -477,7 +518,6 @@ class DataCiteService {
       if (count($calls) && $doi_prefix) {
         // Call the APIs.
         // Let's generate metadata first.
-
         $data_cite_metadata = $this->castADOtoDataCite($fullvalues, $entity, $workflow_status);
         if ($data_cite_metadata !== NULL) {
           $data_cite_metadata['url'] = $ado_url;
@@ -501,9 +541,20 @@ class DataCiteService {
                 $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                 $status = $response[1]['data']['attributes']['state'] ?? NULL;
                 $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
+                $message = $this->t('DOI @doi Minted for ADO with UUID @UUID.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                    '@doi' =>$previous_ap_task_passed_array['doi'],
+                  ]);
+                $workflow_status['info'][] = $message;
               }
               else {
                 $ap_task_parsed_data['status'] = 'error';
+                $message = $this->t('DOI Minting failed for ADO with UUID @UUID.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                  ]);
+                $workflow_status['error'][] = $message;
               }
             }
             elseif ($call['api'] == 'update') {
@@ -518,9 +569,21 @@ class DataCiteService {
                   $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                   $status = $response[1]['data']['attributes']['state'] ?? NULL;
                   $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
+                  $message = $this->t('DOI @doi Metadata and Info update for ADO with UUID @UUID successfull.',
+                    [
+                      '@uuid' => $entity->uuid(),
+                      '@doi' => $doi_update,
+                    ]);
+                  $workflow_status['info'][] = $message;
                 }
                 else {
                   $ap_task_parsed_data['status'] = 'error';
+                  $message = $this->t('DOI @doi  Metadata and Info update failed for ADO with UUID @UUID.',
+                    [
+                      '@uuid' => $entity->uuid(),
+                      '@doi' => $doi_update,
+                    ]);
+                  $workflow_status['error'][] = $message;
                 }
               }
             }
@@ -529,19 +592,48 @@ class DataCiteService {
               $response = $this->deleteDOI($doi_delete);
               if ($response) {
                 $ap_task_parsed_data = [];
+                $message = $this->t('DOI @doi deleted for ADO with UUID @UUID.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                    '@doi' => $doi_delete,
+                  ]);
+                $workflow_status['info'][] = $message;
                 // remove the $ap_task. Deleted and done.
+              }
+              else {
+                $message = $this->t('DOI @doi deletion failed for ADO with UUID @UUID.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                    '@doi' => $doi_delete,
+                  ]);
+                $workflow_status['error'][] = $message;
               }
             }
           }
         }
         else {
+          $message = $this->t('DOI Updated failed for ADO with UUID @UUID because of invalid Metadata Display Output. Check your Twig syntax and DataCite V4 schema conformance.',
+            [
+              '@uuid' => $entity->uuid(),
+            ]);
+          $workflow_status['error'][] = $message;
           $ap_task_parsed_data['status'] = 'error';
         }
       }
       $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
+      // Log all workflow Status
+      foreach (($workflow_status['error'] ?? []) as $error_message) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($error_message);
+      }
+
+      foreach (($workflow_status['info'] ?? []) as $info_message) {
+        $this->loggerFactory->get(static::LOGGER_NAME_PEPPERMINT)->info($info_message);
+      }
+
       return $datacite_metadata;
     }
     else {
+
       return NULL;
     }
 
@@ -732,7 +824,6 @@ class DataCiteService {
                     '%output' => $jsonstring,
                   ]);
                 $workflow_status['errors'][] = $message;
-                $this->loggerFactory->get(static::LOGGER_NAME)->error($message);
               }
               else {
                 // No validation Schema validation here yet
@@ -747,7 +838,7 @@ class DataCiteService {
                   '@metadatadisplay_entity_id' => $metadatadisplay_entity->id(),
                 ]);
               $workflow_status['errors'][] = $message;
-              $this->loggerFactory->get(static::LOGGER_NAME)->error($message);
+
             }
           }
           catch (\Exception $exception) {
@@ -759,7 +850,6 @@ class DataCiteService {
                 '@error' => $exception->getMessage(),
               ]);
             $workflow_status['errors'][] = $message;
-            $this->loggerFactory->get(static::LOGGER_NAME)->error($message);
           }
         }
       }
