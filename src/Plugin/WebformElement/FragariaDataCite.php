@@ -52,6 +52,8 @@ class FragariaDataCite extends OptionsBase {
         'chosen' => FALSE,
         'placeholder' => '',
         'help_display' => '',
+        'doi_id' => NULL,
+        'doi_status' => NULL,
         'size' => '',
         'store' => FALSE,
         'options' => [
@@ -127,6 +129,9 @@ class FragariaDataCite extends OptionsBase {
         // Validate it
         $validated = $this->dataCiteService->validateApTask($datacite_value);
         if ($validated['valid'] && $validated['status'] && $validated['doi']) {
+              $element['#doi_id'] = $validated['doi'];
+              $element['#doi_status'] = $validated['status'];
+              $element['#doi_api'] = $api;
               if ($validated['status'] == "draft") {
                 unset($element['#options']['draft']);
               }
