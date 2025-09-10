@@ -645,23 +645,23 @@ class DataCiteService {
   public function generateApTask(array|null $parsed_doi_data):array {
     $datacite_metadata = [];
     $invalid = FALSE;
-    if ($parsed_doi_data == [] || !($parsed_doi_data[0] ?? FALSE)) {
+    if ($parsed_doi_data == [] || !($parsed_doi_data['valid'] ?? FALSE)) {
       return $datacite_metadata;
     }
     else {
-      if (($parsed_doi_data[2] ?? NULL) == 'error') {
+      if (($parsed_doi_data['status'] ?? NULL) == 'error') {
         // Only there we keep the event.
         // if there is an event at all.
-        if ($parsed_doi_data[1]) {
-          $datacite_metadata['event'] = $parsed_doi_data[1];
-          $datacite_metadata['status'] = $parsed_doi_data[2];
+        if ($parsed_doi_data['event']) {
+          $datacite_metadata['event'] = $parsed_doi_data['event'];
+          $datacite_metadata['status'] = $parsed_doi_data['status'];
         }
       }
       else {
-        $datacite_metadata['status'] = $parsed_doi_data[2];
+        $datacite_metadata['status'] = $parsed_doi_data['status'];
       }
-      if ($parsed_doi_data[3]) {
-        $datacite_metadata['doi'] = $parsed_doi_data[3];
+      if ($parsed_doi_data['doi']) {
+        $datacite_metadata['doi'] = $parsed_doi_data['doi'];
       }
     }
     //add timestamp?
