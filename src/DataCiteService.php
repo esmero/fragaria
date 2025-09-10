@@ -286,7 +286,6 @@ class DataCiteService {
    */
   public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value): ?array {
     // Just in case.
-    $ap_task_parsed_data = [];
     if ($this->isActive()) {
       // What we need.
       // A) Do we have ['ap:tasks']['ap:fragaria']['datacite'] ?
@@ -633,18 +632,12 @@ class DataCiteService {
       return $datacite_metadata;
     }
     else {
-
       return NULL;
     }
-
-
-
     // A new datacite_trigger being NULL is valid if we e.g. generated a Draft, and we want to delete it now.
     // But only IF there is a previous valid (with a DOI present) version in the pre-save.
     // Also, unpublished records can only have Drafts. Ok?
     // We don't make the transition automatically to Registered
-
-
   }
 
 
