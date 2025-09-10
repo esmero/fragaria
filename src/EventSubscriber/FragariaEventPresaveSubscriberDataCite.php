@@ -111,9 +111,8 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
             $full['ap:tasks']['ap:fragaria'][$api] = $ap_task_from_workflow;
             if (!$itemfield->setMainValueFromArray((array) $full)) {
               $message = $this->t(
-                'We could not persist DOI JSON via Metadata Display "@metadatadisplay" into future ADO with UUID @uuid.',
+                'We could not persist DOI into ADO with UUID @uuid.',
                 [
-                  '@metadatadisplayid' => $metadatadisplay_entity->label(),
                   '@uuid' => $entity->uuid(),
                 ]
               );

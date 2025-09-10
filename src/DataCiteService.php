@@ -321,6 +321,9 @@ class DataCiteService {
       // @TODO. Make this very long chunk of nested if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
       if (($ap_task_passed_array['valid'] == $previous_ap_task_passed_array['valid']) && $ap_task_passed_array['valid']) {
+        // Pre set this. Worst case scenario we will return the same data.
+        $ap_task_parsed_data = $ap_task_passed_array;
+
         // Most simple ones. No previous data
         // NO DOI (previous or new)
         if ($ap_task_passed_array['doi'] == NULL && $previous_ap_task_passed_array['doi'] == NULL) {
@@ -346,10 +349,9 @@ class DataCiteService {
         }
         elseif ($ap_task_passed_array['doi'] == NULL && $previous_ap_task_passed_array['doi'] !== NULL) {
           // the user might have manipulated the updated array. Wrong. But we had one before.
-          $ap_task_parsed_data = $previous_ap_task_passed_array['doi'];
-          if ($previous_ap_task_passed_array['status'] == "error") {
-            $ap_task_parsed_data[2] = NULL; // Unset ERROR status. Let the Event run in the future. Not in this run?
-          }
+          // Restore it.
+          $ap_task_passed_array = $previous_ap_task_passed_array;
+          $ap_task_parsed_data = $ap_task_passed_array;
           // Restore the old one. There might be ONLY one situation here that requires us to act differently.
           // IF the previous status was 'error'. But that should either resolve again in replaying?
         }
@@ -361,9 +363,9 @@ class DataCiteService {
           $doi_status = NULL;
           if ($previous_ap_task_passed_array['doi'] == NULL) {
             $check_new_doi = $this->fetchDOI($ap_task_passed_array['doi']);
-            if ($check_new_doi[0]) {
-              $doi = $check_new_doi['data']['attributes']['doi'] ?? $doi;
-              $doi_status = $check_new_doi['data']['attributes']['state'] ?? $doi_status;
+            if ($check_new_doi[0] && ($check_new_doi[1]['data']['attributes'] ?? FALSE)) {
+              $doi = $check_new_doi[1]['data']['attributes']['doi'] ?? $doi;
+              $doi_status = $check_new_doi[1]['data']['attributes']['state'] ?? $doi_status;
               // To make this work, we will set the Old data to the known data from the API.
               $previous_ap_task_passed_array['status'] = $doi_status;
               $previous_ap_task_passed_array['doi'] = $doi;
@@ -371,15 +373,17 @@ class DataCiteService {
             }
             else {
               // API call failed.
+              // The DOI in questions does not belong to us.
             }
           }
-          elseif ($previous_ap_task_passed_array['doi'] !== NULL && $ap_task_passed_array['doi'] != $previous_ap_task_passed_array['doi']) {
+
+          if ($previous_ap_task_passed_array['doi'] !== NULL && $ap_task_passed_array['doi'] != $previous_ap_task_passed_array['doi']) {
             // This is wrong. One DOI per ADO. If the user is trying to connect a new one to this, but our state says we already have one.
             // Means we need to read from the remote the original one, and decide based on that.
             // check if
             $check_original_doi = $this->fetchDOI($previous_ap_task_passed_array['doi']);
             // I could check for URL, but if the user decided to use aliases and the alias changed I won't have a clue here.
-            if ($check_original_doi[0]) {
+            if ($check_original_doi[0] && ($check_original_doi[1]['data']['attributes'] ?? FALSE)) {
               $doi = $check_original_doi[1]['data']['attributes']['doi'] ?? $doi;
               $doi_status = $check_original_doi[1]['data']['attributes']['state'] ?? $doi_status;
               // No workflow to be done. But we should restore the old data though.
@@ -393,12 +397,13 @@ class DataCiteService {
               // Only if the original one does not exist. DOIs are expensive.
               // In this case we can actually keep evaluating.
               $check_new_doi = $this->fetchDOI($ap_task_passed_array['doi']);
-              if ($check_new_doi[0]) {
+              if ($check_new_doi[0] && ($check_new_doi[1]['data']['attributes'] ?? FALSE)) {
                 $doi = $check_new_doi[1]['data']['attributes']['doi'] ?? $doi;
                 $doi_status = $check_new_doi[1]['data']['attributes']['state'] ?? $doi_status;
                 // To make this work, we will set the Old data to the known data from the API.
                 $previous_ap_task_passed_array['status'] = $doi_status;
                 $previous_ap_task_passed_array['doi'] = $doi;
+                $ap_task_parsed_data = $previous_ap_task_passed_array;
               }
               else {
                 // No luck with previous one neither
@@ -410,9 +415,13 @@ class DataCiteService {
           // Finally the expected/simpler one when users don't mess with task data. Previous and New have the same DOI.
           if ($previous_ap_task_passed_array['doi'] !== NULL && $ap_task_passed_array['doi'] == $previous_ap_task_passed_array['doi']) {
             // Now we can finally evaluate if the event can be run
-            if ($ap_task_passed_array['event'] == "draft" && $previous_ap_task_passed_array['status'] == "draft") {
+            if ($ap_task_passed_array['event'] == NULL) {
               // Nothing to do other than Updating metadata.
-              $calls[] = ['api' => 'update', 'event' => 'draft', 'doi' => $ap_task_passed_array['doi']];
+              $calls[] = ['api' => 'update', 'event' => NULL, 'doi' => $ap_task_passed_array['doi']];
+            }
+            elseif ($ap_task_passed_array['event'] == "draft" && $previous_ap_task_passed_array['status'] == "draft") {
+              // Nothing to do other than Updating metadata. No need to pass an event here.
+              $calls[] = ['api' => 'update', 'event' => NULL, 'doi' => $ap_task_passed_array['doi']];
             }
             elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
               // This requires an UPDATE status call.
@@ -491,6 +500,10 @@ class DataCiteService {
                 // DOI will  bet set by this one and reused in others, if any.
                 $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                 $status = $response[1]['data']['attributes']['state'] ?? NULL;
+                $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
+              }
+              else {
+                $ap_task_parsed_data['status'] = 'error';
               }
             }
             elseif ($call['api'] == 'update') {
@@ -504,6 +517,10 @@ class DataCiteService {
                 if ($response[0]) {
                   $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                   $status = $response[1]['data']['attributes']['state'] ?? NULL;
+                  $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
+                }
+                else {
+                  $ap_task_parsed_data['status'] = 'error';
                 }
               }
             }
@@ -518,7 +535,7 @@ class DataCiteService {
           }
         }
         else {
-          $ap_task_parsed_data = [];
+          $ap_task_parsed_data['status'] = 'error';
         }
       }
       $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
@@ -567,7 +584,7 @@ class DataCiteService {
     // Here we assume there can be only ONE dataCite ID at the time. Not ONE per API.
     // NULL is valid. Like no data.
     if ($datacite_metadata == NULL) {
-      return [TRUE, NULL, $current_status];
+      return ['valid' => TRUE, 'event'=> $requested_event, 'status' => $current_status, 'doi' => $DOI];
     }
     else {
       if (is_array($datacite_metadata) &&
