@@ -204,4 +204,30 @@ class FragariaDataCite extends OptionsBase {
     return $form;
   }
 
+  /**
+   * @inheritDoc
+   */
+  public function preSave(array &$element, WebformSubmissionInterface $webform_submission) {
+    // Remove all captcha related keys from the webform submission's data.
+    $key = $element['#webform_key'];
+    $data = $webform_submission->getData();
+    if (($data[$key] ?? "") !== "") {
+      if ($this->dataCiteService->isActive()) {
+        $api = $this->dataCiteService->getActiveAPI();
+        $original_data = $webform_submission->getOriginalData();
+        $datacite_value = $original_data['ap:tasks']['ap:fragaria'][$api] ?? NULL;
+        $validated = $this->dataCiteService->validateApTask($datacite_value);
+        if ($validated['valid']) {
+          $datacite_value['event'] = $data[$key];
+          $data['ap:tasks']['ap:fragaria'][$api] = $datacite_value;
+        }
+        else {
+          unset($datacite_value['event']);
+          $data['ap:tasks']['ap:fragaria'][$api] = $datacite_value;
+        }
+      }
+    }
+    unset($data[$key]);
+    $webform_submission->setData($data);
+  }
 }
