@@ -129,6 +129,7 @@ class FragariaDataCite extends OptionsBase {
         // Validate it
         $validated = $this->dataCiteService->validateApTask($datacite_value);
         if ($validated['valid'] && $validated['status'] && $validated['doi']) {
+              $element['#empty_option'] = $this->t(' -- Keep DOI Status -- ');
               $element['#doi_id'] = $validated['doi'];
               $element['#doi_status'] = $validated['status'];
               $element['#doi_api'] = $api;
@@ -151,6 +152,7 @@ class FragariaDataCite extends OptionsBase {
         }
       }
       else {
+        $this->t(' -- NO DOI -- ');
         unset($element['#options']['delete']);
       }
       // we need ap:tasks key holding our precious!

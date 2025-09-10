@@ -28,12 +28,13 @@ class FragariaDataCite extends Select {
     $doi_info = NULL;
     if ( $element['#doi_id'] && is_string($element['#doi_id'])) {
       $api = $element['#doi_api'] ?? '';
-      $doi_info = "{$api} DOI:". $element['#doi_id'];
+      $doi_info = "Current DOI ({$api}): ". $element['#doi_id'];
       if ($element['#doi_status'] && is_string($element['#doi_status'])) {
         $doi_info = $doi_info. "(". $element['#doi_status'] . ")";
       }
     }
     if ($doi_info) {
+      $doi_info = "<b>". $doi_info . "</b>";
       if ($element['#description']['#markup'] ?? NULL) {
         // Build a simplistic DOI info if any
         $element['#description']['#markup'] = $element['#description']['#markup'] . "</br>" . $doi_info;
