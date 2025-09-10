@@ -140,7 +140,7 @@ class FragariaDataCite extends OptionsBase {
                 unset($element['#options']['draft']);
                 unset($element['#options']['delete']);
               }
-              elseif ($validated['status'] == "published") {
+              elseif ($validated['status'] == "findable") {
                 unset($element['#options']['draft']);
                 unset($element['#options']['delete']);
                 unset($element['#options']['publish']);
