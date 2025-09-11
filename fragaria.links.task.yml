@@ -1,0 +1,12 @@
+fragaria_datacite_config_form:
+  title: 'JSON Key Name Providers'
+  route_name: fragaria.datacite_settings_form
+  base_route: fragaria.datacite_settings_form
+  weight: 1
+
+
+fragaria_datacite_reports_form:
+  route_name: fragaria.datacite_reports_form
+  title: 'Logs'
+  base_route: fragaria.datacite_settings_form
+  weight: 3
