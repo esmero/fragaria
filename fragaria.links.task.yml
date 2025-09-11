@@ -7,6 +7,6 @@ fragaria_datacite_config_form:
 
 fragaria_datacite_reports_form:
   route_name: fragaria.datacite_reports_form
-  title: 'Logs'
+  title: 'Reports'
   base_route: fragaria.datacite_settings_form
   weight: 3
