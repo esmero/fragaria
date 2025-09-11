@@ -95,14 +95,6 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'active') ?? FALSE
     ];
 
-    $form['simulate'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Simulate without talking to DataCite'),
-      '#description' => $this->t('When enabled and this checked, Fake DOIs will be generated and no DataCite API interaction will happen, but all other internal features like Workflow transitions, Metadata validation and Deletion prevention will work as expected. Useuful when evaluating DOI workflows without (yet) a DataCite Subscription.'),
-      '#default_value' => (bool) $config->get(
-        'simulate') ?? FALSE
-    ];
-
     $form['use_do_url'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Always use do/{uuid} as the URL'),
@@ -117,7 +109,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'DataCite/Fabrica Repository User'
       ),
       '#description'   => $this->t(
-        'Please provide your Institution\'s DataCite/Fabrica Repository User.'
+        'Please provide your Institution\'s DataCite/Fabrica Repository User. Normally in the form of "xxx.xxx"'
       ),
       '#default_value' => $config->get('repository_fabrica_user') ?? '',
       '#required' => FALSE
@@ -135,34 +127,13 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       '#required' => FALSE
     ];
 
-    $form['doi_prefix'] = [
-      '#type'          => 'textfield',
-      '#title'         => $this->t(
-        'DOI prefix.'
-      ),
-      '#description'   => $this->t(
-        'Please provide a valid/registered Prefix for DOI assignment, belonging to your previously input DataCite/Fabrica Repository account.'
-      ),
-      '#default_value' => $config->get('doi_prefix') ?? '',
-      '#required' => FALSE
-    ];
-
-    $form['use_test_account'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Only use the test/staging DataCite API. DOIs will not be persistent/redirectable or even findable.'),
-      '#default_value' => $config->get('use_test_account', FALSE) ?? FALSE,
-      '#description' => $this->t('If enabled, DataCite Fabrica DOI REST API requests and metadata workflows will interact against DataCite\'s Test endpoints at @url. Enable if you are in early stages of evaluation and want to get used to the workflow.',[
-        '@url' => "https://support.datacite.org/docs/testing-guide"
-      ]),
-    ];
-
     $form['repository_fabrica_user_test'] = [
       '#type'          => 'textfield',
       '#title'         => $this->t(
         'DataCite/Fabrica Repository Test User'
       ),
       '#description'   => $this->t(
-        'Please provide your Institution\'s DataCite/Fabrica Test Repository User.'
+        'Please provide your Institution\'s DataCite/Fabrica Test Repository User. Normally in the form of "xxx.xxx"'
       ),
       '#default_value' => $config->get('repository_fabrica_user_test') ?? '',
       '#required' => FALSE
@@ -178,6 +149,27 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       ),
       '#default_value' => $config->get('repository_fabrica_password_test') ?? '',
       '#required' => FALSE
+    ];
+
+    $form['use_test_account'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Only use the test/staging DataCite API. DOIs will not be persistent/redirectable or even findable.'),
+      '#default_value' => $config->get('use_test_account', FALSE) ?? FALSE,
+      '#description' => $this->t('If enabled, DataCite Fabrica DOI REST API requests and metadata workflows will interact against DataCite\'s Test endpoints at @url. Enable if you are in early stages of evaluation and want to get used to the workflow.',[
+        '@url' => "https://support.datacite.org/docs/testing-guide"
+      ]),
+    ];
+
+    $form['doi_prefix'] = [
+      '#type'          => 'textfield',
+      '#title'         => $this->t(
+        'DOI prefix.'
+      ),
+      '#description'   => $this->t(
+        'Please provide a valid/registered Prefix for DOI assignment, belonging to your active (Test or production) DataCite/Fabrica Repository account.'
+      ),
+      '#default_value' => $config->get('doi_prefix') ?? '',
+      '#required' => TRUE
     ];
 
     $form['processor_entity_id'] = [
@@ -234,12 +226,8 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'active', $form_state->getValue('active') ? TRUE : FALSE
       )
       ->set(
-        'simulate', $form_state->getValue('active') ? TRUE : FALSE
-      )
-      ->set(
         'use_test_account', $form_state->getValue('use_test_account') ? TRUE : FALSE
       )
-
       ->set(
         'doi_prefix', trim($form_state->getValue('doi_prefix') ?? ' ')
       )

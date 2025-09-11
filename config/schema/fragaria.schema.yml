@@ -5,9 +5,6 @@ fragaria.datacite:
     active:
       type: boolean
       label: 'If DataCite API Integration is active'
-    simulate:
-      type: boolean
-      label: 'If DataCite API Integration is being internally simulated'
     use_do_url:
       type: boolean
       label: 'If URLs sent to DataCite will be always /do/{uuid}. Recommended! Up to the user to keep, either the aliases OR enable the DO workaround in this module'
