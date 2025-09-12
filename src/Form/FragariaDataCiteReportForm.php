@@ -24,9 +24,9 @@ class FragariaDataCiteReportForm extends FormBase {
    */
   private CONST LOG_LEVELS = [
     'all'       => 'All Levels (all time)',
-    'INFO'      => 'INFO (Last time processed)',
-    'WARNING'   => 'WARNING (Last time processed)',
-    'ERROR'   => 'ERRORS (Last time processed)',
+    'INFO'      => 'INFO ',
+    'WARNING'   => 'WARNING',
+    'ERROR'   => 'ERRORS',
   ];
 
   public function getFormId() {
@@ -41,17 +41,8 @@ class FragariaDataCiteReportForm extends FormBase {
   protected $fileSystem;
 
   /**
-   * Constructs a ContentEntityForm object.
-   *
-   * @param \Drupal\Core\Entity\EntityRepositoryInterface          $entity_repository
-   *   The entity repository service.
-   * @param \Drupal\Core\Entity\EntityTypeBundleInfoInterface|null $entity_type_bundle_info
-   *   The entity type bundle service.
-   * @param \Drupal\Component\Datetime\TimeInterface|null          $time
-   *   The AMI Utility service.
-   * @param \Drupal\ami\AmiUtilityService                          $ami_utility
-   *   The AMI LoD service.
-   * @param \Drupal\Core\File\FileSystemInterface                  $file_system
+   * @param \Drupal\Component\Datetime\TimeInterface|NULL $time
+   * @param \Drupal\Core\File\FileSystemInterface $file_system
    */
   public function __construct(
     TimeInterface $time = NULL, FileSystemInterface $file_system) {
@@ -290,6 +281,7 @@ class FragariaDataCiteReportForm extends FormBase {
         ),
       ];
     }
+
     // Add a submit button that handles the submission of the form.
     $form['actions']['submit'] = array(
       '#type' => 'submit',
