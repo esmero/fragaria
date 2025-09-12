@@ -724,7 +724,7 @@ class DataCiteService {
     // API needs to only match IF there is a 'status'. present. If new the request happens on the active one.
     // Here we assume there can be only ONE dataCite ID at the time. Not ONE per API.
     // NULL is valid. Like no data.
-    if ($datacite_metadata == NULL) {
+    if (empty($datacite_metadata)) {
       return ['valid' => TRUE, 'event'=> $requested_event, 'status' => $current_status, 'doi' => $DOI];
     }
     else {
