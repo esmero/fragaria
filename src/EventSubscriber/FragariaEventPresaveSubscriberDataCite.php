@@ -13,7 +13,7 @@ use Drupal\fragaria\DataCiteService;
 
 
 /**
- * Event subscriber for SBF bearing entity presave event.
+ * Event subscriber for Data Cite on ADO presave event.
  */
 class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresaveSubscriber {
 
@@ -53,7 +53,7 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
   private DataCiteService $dataCiteService;
 
   /**
-   * StrawberryfieldEventPresaveSubscriberSetTitlefromMetadata constructor.
+   * FragariaEventPresaveSubscriberDataCite constructor.
    *
    * @param \Drupal\Core\StringTranslation\TranslationInterface $string_translation
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger

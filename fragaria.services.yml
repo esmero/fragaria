@@ -12,3 +12,8 @@ services:
     tags:
       - {name: event_subscriber}
     arguments: ['@string_translation', '@messenger', '@logger.factory', '@current_user', '@fragaria.datacite']
+  fragaria.datacite_insert_subscriber:
+    class: Drupal\fragaria\EventSubscriber\FragariaEventInsertSubscriberDataCite
+    tags:
+      - { name: event_subscriber }
+    arguments: [ '@string_translation', '@messenger', '@logger.factory', '@current_user', '@fragaria.datacite' ]

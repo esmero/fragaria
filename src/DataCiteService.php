@@ -15,6 +15,7 @@ use Drupal\Core\Url;
 use Drupal\strawberryfield\Tools\StrawberryfieldJsonHelper;
 use GuzzleHttp\ClientInterface;
 use Drupal\Core\Render\RendererInterface;
+use GuzzleHttp\Exception\GuzzleException;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
@@ -29,6 +30,13 @@ class DataCiteService {
   private const LOGGER_NAME = 'fragaria_datacite';
 
   private const LOGGER_NAME_PEPPERMINT = 'fragaria_datacite_peppermint';
+
+  public const DATACITE_DATA_WRAPPER = [
+    'data' => [
+      'type' => 'dois',
+      'attributes' => []
+    ]
+  ];
 
   /** @var string[]
    * 'register' os not a valid Data Cite event. But our action of
@@ -103,7 +111,7 @@ class DataCiteService {
     $this->currentUser = $currentUser;
     $this->httpClient = $httpClient;
     $this->renderer = $renderer;
-    // Setup the fragaria data cite monolog file logger
+    // Setup the Fragaria data cite monolog file logger
     $log = new Logger(static::LOGGER_NAME);
     $private_path = \Drupal::service('stream_wrapper_manager')->getViaUri('private://')->getDirectoryPath();
     $handler = new StreamHandler($private_path . '/fragaria/logs/datacite.log', Logger::DEBUG);
@@ -113,9 +121,9 @@ class DataCiteService {
 
     $log_good_things = new Logger(static::LOGGER_NAME_PEPPERMINT);
     $private_path = \Drupal::service('stream_wrapper_manager')->getViaUri('private://')->getDirectoryPath();
-    $handler = new StreamHandler($private_path . '/fragaria/logs/datacite_peppermint.log', Logger::DEBUG);
-    $handler->setFormatter(new JsonFormatter());
-    $log_good_things->pushHandler($handler);
+    $handler_mint = new StreamHandler($private_path . '/fragaria/logs/datacite_peppermint.log', Logger::DEBUG);
+    $handler_mint->setFormatter(new JsonFormatter());
+    $log_good_things->pushHandler($handler_mint);
     $this->loggerFactory->get(static::LOGGER_NAME_PEPPERMINT)->setLoggers([[$log_good_things]]);
   }
 
@@ -153,11 +161,30 @@ class DataCiteService {
       else {
         return 'datacite';
       }
-    } else {
+    }
+    else {
       return NULL;
     }
-
   }
+
+
+  /**
+   * Returns the active URL type
+   *    uuid for do/uuid
+   *    canonical for the Node canonical.
+   *
+   * @return string|null
+   */
+  public function getUrlType(): ?string {
+    // @TODO. Make sure we also have password and user for both before returning
+    if ($this->config->get('use_do_url')) {
+      return 'uuid';
+    }
+    else {
+      return 'canonical';
+    }
+  }
+
 
   /**
    * Fetches from DataCite a single DOI info,
@@ -165,23 +192,31 @@ class DataCiteService {
    * @param string $doi
    *
    * @return array
-   * @throws \GuzzleHttp\Exception\GuzzleException
    */
   public function fetchDOI(string $doi): array {
     $api_url_and_credentials = $this->getAPIUrlAndCredentials();
     $response_encoded = [];
     $sucessfull = FALSE;
     if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
-      $api_url = $api_url_and_credentials[0] . trim($doi);
-      $response = $this->httpClient->request('GET', $api_url, [
-        'headers' => [
-          'accept' => 'application/vnd.api+json',
-          'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2])
-        ],
-      ]);
-      $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
-      $response_encoded = $sucessfull ? json_decode($response->getBody()
-        ->getContents(), TRUE) : [];
+      try {
+        $api_url = $api_url_and_credentials[0] . trim($doi);
+        $response = $this->httpClient->request('GET', $api_url, [
+          'headers' => [
+            'accept' => 'application/vnd.api+json',
+            'authorization' => 'Basic ' . base64_encode($api_url_and_credentials[1] . ':' . $api_url_and_credentials[2])
+          ],
+        ]);
+        $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
+        $response_encoded = $sucessfull ? json_decode($response->getBody()
+          ->getContents(), TRUE) : [];
+      }
+      catch(GuzzleException $guzzleException) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI INFO REST API Call for DOI @doi failed with error @error', [
+          '@error' => $guzzleException->getMessage(),
+          '@doi' => $doi
+        ]));
+        return [FALSE, []];
+      }
     }
     return [$sucessfull, $response_encoded];
   }
@@ -190,24 +225,32 @@ class DataCiteService {
    * @param array $data
    *
    * @return array
-   * @throws \GuzzleHttp\Exception\GuzzleException
    */
   public function requestDOI(array $data):array {
     $api_url_and_credentials = $this->getAPIUrlAndCredentials();
     $response_encoded = [];
     $sucessfull = FALSE;
     if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
-      $api_url = $api_url_and_credentials[0];
-      $response = $this->httpClient->request('POST', $api_url, [
-        'body' => json_encode($data),
-        'headers' => [
-          'accept' => 'application/vnd.api+json',
-          'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2]),
-          'content-type' => 'application/json',
-        ],
-      ]);
-      $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
-      $response_encoded = $sucessfull ? json_decode($response->getBody()->getContents(), TRUE) : [];
+      try {
+        $api_url = $api_url_and_credentials[0];
+        $response = $this->httpClient->request('POST', $api_url, [
+          'body' => json_encode($data),
+          'headers' => [
+            'accept' => 'application/vnd.api+json',
+            'authorization' => 'Basic ' . base64_encode($api_url_and_credentials[1] . ':' . $api_url_and_credentials[2]),
+            'content-type' => 'application/json',
+          ],
+        ]);
+        $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
+        $response_encoded = $sucessfull ? json_decode($response->getBody()
+          ->getContents(), TRUE) : [];
+      }
+      catch(GuzzleException $guzzleException) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI Create REST API Call failed with error @error', [
+          '@error' => $guzzleException->getMessage()
+        ]));
+        return [FALSE, []];
+      }
     }
     return [$sucessfull, $response_encoded];
   }
@@ -217,7 +260,6 @@ class DataCiteService {
    * @param string $doi
    *
    * @return array
-   * @throws \GuzzleHttp\Exception\GuzzleException
    */
   public function updateDOI(array $data, string $doi):array {
     $api_url_and_credentials = $this->getAPIUrlAndCredentials();
@@ -225,17 +267,26 @@ class DataCiteService {
     $sucessfull = FALSE;
     if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
       $api_url = $api_url_and_credentials[0].trim($doi);
-      $response = $this->httpClient->request('PUT', $api_url, [
-        'body' => json_encode($data),
-        'headers' => [
-          'accept' => 'application/vnd.api+json',
-          'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2]),
-          'content-type' => 'application/json',
-        ],
-      ]);
-      $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
-      $response_encoded = $sucessfull ? json_decode($response->getBody()
-        ->getContents(), TRUE) : [];
+      try {
+        $response = $this->httpClient->request('PUT', $api_url, [
+          'body' => json_encode($data),
+          'headers' => [
+            'accept' => 'application/vnd.api+json',
+            'authorization' => 'Basic ' . base64_encode($api_url_and_credentials[1] . ':' . $api_url_and_credentials[2]),
+            'content-type' => 'application/json',
+          ],
+        ]);
+        $sucessfull = $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
+        $response_encoded = $sucessfull ? json_decode($response->getBody()
+          ->getContents(), TRUE) : [];
+      }
+      catch(GuzzleException $guzzleException) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI Update REST API Call for DOI @doi failed with error @error', [
+          '@error' => $guzzleException->getMessage(),
+          '@doi' => $doi
+        ]));
+        return [FALSE, []];
+      }
     }
     return [$sucessfull, $response_encoded];
   }
@@ -247,19 +298,27 @@ class DataCiteService {
    * @param string $doi
    *
    * @return boolean
-   * @throws \GuzzleHttp\Exception\GuzzleException
    */
   public function deleteDOI(string $doi): bool {
     $api_url_and_credentials = $this->getAPIUrlAndCredentials();
     $status = FALSE;
     if ($api_url_and_credentials[1] && $api_url_and_credentials[2]) {
-      $api_url = $api_url_and_credentials[0] . trim($doi);
-      $response = $this->httpClient->request('DELETE', $api_url, [
-        'headers' => [
-          'authorization' => 'Basic '. base64_encode($api_url_and_credentials[1].':'.$api_url_and_credentials[2])
-        ],
-      ]);
-      $status = $response->getStatusCode() == 204;
+      try {
+        $api_url = $api_url_and_credentials[0] . trim($doi);
+        $response = $this->httpClient->request('DELETE', $api_url, [
+          'headers' => [
+            'authorization' => 'Basic ' . base64_encode($api_url_and_credentials[1] . ':' . $api_url_and_credentials[2])
+          ],
+        ]);
+        $status = $response->getStatusCode() == 204;
+      }
+      catch(GuzzleException $guzzleException) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI DELETE REST API Call for DOI @doi failed with error @error', [
+          '@error' => $guzzleException->getMessage(),
+          '@doi' => $doi
+        ]));
+        return FALSE;
+      }
     }
     return $status;
   }
@@ -354,7 +413,7 @@ class DataCiteService {
               [
                 '@uuid' => $entity->uuid(),
               ]);
-            $workflow_status['errors'][] = $message;
+            $workflow_status['error'][] = $message;
             // IF entity status is not published we can not run Publish or register.
             // What is else under NO DOI? Wrong combo of operations?
           }
@@ -369,7 +428,7 @@ class DataCiteService {
               '@uuid' => $entity->uuid(),
               '@doi' => $previous_ap_task_passed_array['doi'],
             ]);
-          $workflow_status['errors'][] = $message;
+          $workflow_status['error'][] = $message;
           // Restore the old one. There might be ONLY one situation here that requires us to act differently.
           // IF the previous status was 'error'. But that should either resolve again in replaying?
         }
@@ -395,7 +454,7 @@ class DataCiteService {
                   '@uuid' => $entity->uuid(),
                   '@doi' =>$previous_ap_task_passed_array['doi'],
                 ]);
-              $workflow_status['errors'][] = $message;
+              $workflow_status['error'][] = $message;
             }
           }
 
@@ -420,7 +479,7 @@ class DataCiteService {
                   '@uuid' => $entity->uuid(),
                   '@doi' => $previous_ap_task_passed_array['doi'],
                 ]);
-              $workflow_status['errors'][] = $message;
+              $workflow_status['error'][] = $message;
               // @LOG First Fetch failure
               // Only if the original one does not exist. DOIs are expensive.
               // In this case we can actually keep evaluating.
@@ -439,7 +498,7 @@ class DataCiteService {
                     '@uuid' => $entity->uuid(),
                     '@doi' => $ap_task_passed_array['doi'],
                   ]);
-                $workflow_status['errors'][] = $message;
+                $workflow_status['error'][] = $message;
               }
             }
           }
@@ -480,7 +539,7 @@ class DataCiteService {
                   '@uuid' => $entity->uuid(),
                   '@doi' => $ap_task_passed_array['doi'],
                 ]);
-              $workflow_status['errors'][] = $message;
+              $workflow_status['error'][] = $message;
             }
             elseif ($ap_task_passed_array['event'] == "delete" && $previous_ap_task_passed_array['status'] === "draft") {
               $calls[] = ['api' => 'delete', 'doi' => $ap_task_passed_array['doi']];
@@ -491,7 +550,7 @@ class DataCiteService {
                   '@uuid' => $entity->uuid(),
                   '@doi' => $ap_task_passed_array['doi'],
                 ]);
-              $workflow_status['errors'][] = $message;
+              $workflow_status['error'][] = $message;
               // What is else here?
             }
           }
@@ -509,7 +568,7 @@ class DataCiteService {
             '@uuid' => $entity->uuid(),
             '@doi' =>$previous_ap_task_passed_array['doi'],
           ]);
-        $workflow_status['errors'][] = $message;
+        $workflow_status['error'][] = $message;
       }
       // So if the previous one is invalid and the new one is valid?
       // Should never happen but there are edge cases. e.g. the Structure was pushed into the ADO but
@@ -521,12 +580,8 @@ class DataCiteService {
         $data_cite_metadata = $this->castADOtoDataCite($fullvalues, $entity, $workflow_status);
         if ($data_cite_metadata !== NULL) {
           $data_cite_metadata['url'] = $ado_url;
-          $data_wrapper = [
-            'data' => [
-              'type' => 'dois',
-              'attributes' => $data_cite_metadata
-            ]
-          ];
+          $data_wrapper = static::DATACITE_DATA_WRAPPER;
+          $data_wrapper['data']['attributes'] = $data_cite_metadata;
           $doi = NULL;
           foreach ($calls as $call) {
             if ($call['api'] == 'create') {
@@ -544,7 +599,7 @@ class DataCiteService {
                 $message = $this->t('DOI @doi Minted for ADO with UUID @UUID.',
                   [
                     '@uuid' => $entity->uuid(),
-                    '@doi' =>$previous_ap_task_passed_array['doi'],
+                    '@doi' => $doi,
                   ]);
                 $workflow_status['info'][] = $message;
               }
@@ -572,7 +627,7 @@ class DataCiteService {
                   $message = $this->t('DOI @doi Metadata and Info update for ADO with UUID @UUID successfull.',
                     [
                       '@uuid' => $entity->uuid(),
-                      '@doi' => $doi_update,
+                      '@doi' => $doi,
                     ]);
                   $workflow_status['info'][] = $message;
                 }
@@ -730,7 +785,6 @@ class DataCiteService {
    */
   public function generateApTask(array|null $parsed_doi_data):array {
     $datacite_metadata = [];
-    $invalid = FALSE;
     if ($parsed_doi_data == [] || !($parsed_doi_data['valid'] ?? FALSE)) {
       return $datacite_metadata;
     }
@@ -786,7 +840,7 @@ class DataCiteService {
               '@action' => 'Cast ADO to DataCite Metadata',
               '@metadatadisplay_entity_id' => $metadatadisplay_entity->id()
             ]);
-          $workflow_status['errors'][] = $message;
+          $workflow_status['error'][] = $message;
         }
         else {
           try {
@@ -817,7 +871,7 @@ class DataCiteService {
                     '@metadatadisplay_entity_id' => $metadatadisplay_entity->id(),
                     '%output' => $jsonstring,
                   ]);
-                $workflow_status['errors'][] = $message;
+                $workflow_status['error'][] = $message;
               }
               else {
                 // No validation Schema validation here yet
@@ -831,7 +885,7 @@ class DataCiteService {
                   '@action' => 'Cast ADO to DataCite Metadata',
                   '@metadatadisplay_entity_id' => $metadatadisplay_entity->id(),
                 ]);
-              $workflow_status['errors'][] = $message;
+              $workflow_status['error'][] = $message;
 
             }
           }
@@ -843,7 +897,7 @@ class DataCiteService {
                 '@metadatadisplay_entity_id' => $metadatadisplay_entity->id(),
                 '@error' => $exception->getMessage(),
               ]);
-            $workflow_status['errors'][] = $message;
+            $workflow_status['error'][] = $message;
           }
         }
       }
@@ -853,7 +907,7 @@ class DataCiteService {
             '@uuid' => $entity->uuid(),
             '@action' => 'Cast ADO to DataCite Metadata',
           ]);
-        $workflow_status['errors'][] = $message;
+        $workflow_status['error'][] = $message;
       }
     }
     else {
@@ -862,7 +916,7 @@ class DataCiteService {
           '@uuid' => $entity->uuid(),
           '@action' => 'Cast ADO to DataCite Metadata',
         ]);
-      $workflow_status['errors'][] = $message;
+      $workflow_status['error'][] = $message;
     }
     return $dataCiteMetadata;
   }

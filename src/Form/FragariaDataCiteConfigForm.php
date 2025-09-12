@@ -78,7 +78,6 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       else {
         $entity = reset($entities);
         // Check if entity is still of type application/json. People do crazy stuff sometimes.
-        $entity;
       }
     }
 
