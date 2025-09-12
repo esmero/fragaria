@@ -100,7 +100,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       '#title' => $this->t('Always use do/{uuid} as the URL'),
       '#description' => $this->t('If disabled the current alias (canonical URL) of the NODE will be used. When enabled , all URLs sent to DataCite will be in the form of (https|http)//:{yourdomain}/do/{uuid}. We recommend you use always use the do/uuid alias for ADOs or enable in this module the automatic workaround. '),
       '#default_value' => (bool) $config->get(
-      'use_do') ?? TRUE
+      'use_do_url') ?? TRUE
     ];
 
     $form['repository_fabrica_user'] = [
