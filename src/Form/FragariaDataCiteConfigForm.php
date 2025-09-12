@@ -232,6 +232,9 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'doi_prefix', trim($form_state->getValue('doi_prefix') ?? ' ')
       )
       ->set(
+        'use_do_url', (bool) $form_state->getValue('use_do_url') ?? FALSE
+      )
+      ->set(
         'processor_entity_id', $form_state->getValue('processor_entity_id')
       );
 

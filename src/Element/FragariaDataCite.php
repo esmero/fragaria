@@ -26,7 +26,7 @@ class FragariaDataCite extends Select {
     // @see \Drupal\Core\Form\FormValidator::performRequiredValidation
     $element['#type'] = 'select';
     $doi_info = NULL;
-    if ( $element['#doi_id'] && is_string($element['#doi_id'])) {
+    if (isset($element['#doi_id']) && is_string($element['#doi_id'])) {
       $api = $element['#doi_api'] ?? '';
       $doi_info = "Current DOI ({$api}): ". $element['#doi_id'];
       if ($element['#doi_status'] && is_string($element['#doi_status'])) {

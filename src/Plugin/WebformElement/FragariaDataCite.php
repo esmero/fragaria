@@ -211,7 +211,7 @@ class FragariaDataCite extends OptionsBase {
     // Remove all captcha related keys from the webform submission's data.
     $key = $element['#webform_key'];
     $data = $webform_submission->getData();
-    if (($data[$key] ?? "") !== "") {
+    if (($data[$key] ?? "") !== "" && ($element['#access'] ?? TRUE)) {
       if ($this->dataCiteService->isActive()) {
         $api = $this->dataCiteService->getActiveAPI();
         $original_data = $webform_submission->getOriginalData();

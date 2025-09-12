@@ -310,8 +310,9 @@ class DataCiteService {
         // But we won't act on a non-active API.
         return NULL;
       }
-
-      if ($this->config->get('use_do_url')) {
+      // There is NO ID for a new Entity. And toURL will fail.
+      if ($this->config->get('use_do_url') || $entity->isNew()) {
+        // If so, we will have to use a post save subscriber to update the URL ONCE saved.
         $ado_url = Url::fromRoute('<front>')->setAbsolute();
         $ado_url = $ado_url->toString()."/do/" . $entity->uuid();
       }
