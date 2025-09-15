@@ -596,7 +596,7 @@ class DataCiteService {
                 $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                 $status = $response[1]['data']['attributes']['state'] ?? NULL;
                 $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
-                $message = $this->t('DOI @doi Minted for ADO with UUID @UUID.',
+                $message = $this->t('DOI @doi Minted for ADO with UUID @uuid.',
                   [
                     '@uuid' => $entity->uuid(),
                     '@doi' => $doi,
@@ -605,7 +605,7 @@ class DataCiteService {
               }
               else {
                 $ap_task_parsed_data['status'] = 'error';
-                $message = $this->t('DOI Minting failed for ADO with UUID @UUID.',
+                $message = $this->t('DOI Minting failed for ADO with UUID @uuid.',
                   [
                     '@uuid' => $entity->uuid(),
                   ]);
@@ -624,7 +624,7 @@ class DataCiteService {
                   $doi = $response[1]['data']['attributes']['doi'] ?? NULL;
                   $status = $response[1]['data']['attributes']['state'] ?? NULL;
                   $ap_task_parsed_data = ['valid' => TRUE, 'event' => NULL, 'status' => $status, 'doi' => $doi];
-                  $message = $this->t('DOI @doi Metadata and Info update for ADO with UUID @UUID successfull.',
+                  $message = $this->t('DOI @doi Metadata and Info updated for ADO with UUID @uuid successfully.',
                     [
                       '@uuid' => $entity->uuid(),
                       '@doi' => $doi,
@@ -633,7 +633,7 @@ class DataCiteService {
                 }
                 else {
                   $ap_task_parsed_data['status'] = 'error';
-                  $message = $this->t('DOI @doi  Metadata and Info update failed for ADO with UUID @UUID.',
+                  $message = $this->t('DOI @doi  Metadata and Info update failed for ADO with UUID @uuid.',
                     [
                       '@uuid' => $entity->uuid(),
                       '@doi' => $doi_update,
