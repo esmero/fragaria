@@ -1,5 +1,5 @@
 fragaria_datacite_config_form:
-  title: 'JSON Key Name Providers'
+  title: 'DataCite Configuration'
   route_name: fragaria.datacite_settings_form
   base_route: fragaria.datacite_settings_form
   weight: 1
