@@ -2,7 +2,6 @@
 
 namespace Drupal\fragaria\Form;
 
-use Drupal\Core\Entity\EntityTypeManager;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
@@ -77,6 +76,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       }
       else {
         $entity = reset($entities);
+        $entity->uuid();
         // Check if entity is still of type application/json. People do crazy stuff sometimes.
       }
     }
@@ -220,8 +220,9 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    $this->config('fragaria.datacite')
-      ->set(
+    $config = $this->config('fragaria.datacite');
+
+     $config->set(
         'active', $form_state->getValue('active') ? TRUE : FALSE
       )
       ->set(
@@ -238,7 +239,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       );
 
     if ($form_state->getValue('repository_fabrica_user_test') && $form_state->getValue('repository_fabrica_password_test')) {
-      $this->config('fragaria.datacite')->set(
+      $config->set(
         'repository_fabrica_user_test', trim($form_state->getValue('repository_fabrica_user_test') ?? ' ')
       )
         ->set(
@@ -247,7 +248,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
     }
 
     if ($form_state->getValue('repository_fabrica_user') && $form_state->getValue('repository_fabrica_password')) {
-      $this->config('fragaria.datacite')->set(
+      $config->set(
         'repository_fabrica_user_test', trim($form_state->getValue('repository_fabrica_user') ?? ' ')
       )
         ->set(
@@ -255,7 +256,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         );
     }
 
-    $this->config('fragaria.datacite')->save();
+    $config->save();
     parent::submitForm($form, $form_state);
   }
 
