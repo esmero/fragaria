@@ -105,8 +105,9 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
             $previous_datacite_value = (array) $previous_datacite_value;
             unset($full_original);
           }
+          $workflow_status = [];
           // Now with this data in hand we can start the workflow.
-          $ap_task_from_workflow = $this->dataCiteService->evaluateWorkflow($entity,$full,$previous_datacite_value);
+          $ap_task_from_workflow = $this->dataCiteService->evaluateWorkflow($entity,$full,$previous_datacite_value, $workflow_status);
           if ($ap_task_from_workflow !== NULL) {
             $full['ap:tasks']['ap:fragaria'][$api] = $ap_task_from_workflow;
             if (!$itemfield->setMainValueFromArray((array) $full)) {
@@ -118,6 +119,14 @@ class FragariaEventPresaveSubscriberDataCite extends StrawberryfieldEventPresave
               );
             }
           }
+          if (!empty($workflow_status) && $this->account->hasPermission('display strawberry messages')) {
+            foreach (($workflow_status['error'] ?? []) as $error_message) {
+              $this->messenger->addError($error_message);
+            }
+            foreach (($workflow_status['info'] ?? []) as $info_message) {
+              $this->messenger->addStatus($info_message);
+            }
+          };
         }
       }
       $current_class = get_called_class();

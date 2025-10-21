@@ -212,7 +212,7 @@ class DataCiteService {
       }
       catch(GuzzleException $guzzleException) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI INFO REST API Call for DOI @doi failed with error @error', [
-          '@error' => $guzzleException->getMessage(),
+          '@error' => $guzzleException->getResponse()->getBody()->getContents(),
           '@doi' => $doi
         ]));
         return [FALSE, []];
@@ -247,7 +247,7 @@ class DataCiteService {
       }
       catch(GuzzleException $guzzleException) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI Create REST API Call failed with error @error', [
-          '@error' => $guzzleException->getMessage()
+          '@error' => $guzzleException->getResponse()->getBody()->getContents(),
         ]));
         return [FALSE, []];
       }
@@ -282,7 +282,7 @@ class DataCiteService {
       }
       catch(GuzzleException $guzzleException) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI Update REST API Call for DOI @doi failed with error @error', [
-          '@error' => $guzzleException->getMessage(),
+          '@error' => $guzzleException->getResponse()->getBody()->getContents(),
           '@doi' => $doi
         ]));
         return [FALSE, []];
@@ -314,7 +314,7 @@ class DataCiteService {
       }
       catch(GuzzleException $guzzleException) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($this->t('DOI DELETE REST API Call for DOI @doi failed with error @error', [
-          '@error' => $guzzleException->getMessage(),
+          '@error' => $guzzleException->getResponse()->getBody()->getContents(),
           '@doi' => $doi
         ]));
         return FALSE;
@@ -343,7 +343,7 @@ class DataCiteService {
    * @throws \Drupal\Core\TypedData\Exception\MissingDataException
    * @throws \GuzzleHttp\Exception\GuzzleException
    */
-  public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value): ?array {
+  public function evaluateWorkflow(ContentEntityInterface $entity, array $fullvalues, array|null $previous_data_cite_value, array &$workflow_status ): ?array {
     // Just in case.
     if ($this->isActive()) {
       // What we need.
@@ -388,6 +388,40 @@ class DataCiteService {
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
       // @TODO. Make this very long chunk of nested if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
+
+      // Edge case. A Revision/error provides invalid previous_ap_task_passed array
+      // But the current one is valid and has a DOI. If so, we can not relay on the previous state of the DOI
+      // But we can force a remote fetch and make it valid afterwards.
+      // For this we need to make sure that is evaluated before
+      if (($ap_task_passed_array['valid']  && !$previous_ap_task_passed_array['valid']) && ($ap_task_passed_array['doi'] ?? FALSE)) {
+        // here we will use the DataCite API to fetch the Current Status since we can't depend on previous statuses
+        $check_existing_doi = $this->fetchDOI($ap_task_passed_array['doi']);
+        $failed_remote = TRUE;
+        if ($check_existing_doi[0] && ($check_existing_doi[1]['data']['attributes'] ?? FALSE)) {
+          $doi = $check_existing_doi[1]['data']['attributes']['doi'] ?? NULL;
+          $doi_status = $check_existing_doi[1]['data']['attributes']['state'] ?? NULL;
+          // To make this work, we will set the Old data to the known data from the API.
+          if ($doi_status && $doi) {
+            $previous_ap_task_passed_array['status'] = $doi_status;
+            $previous_ap_task_passed_array['doi'] = $doi;
+            $previous_ap_task_passed_array['valid'] = TRUE;
+            $failed_remote = FALSE;
+          }
+        }
+
+        if ($failed_remote) {
+          $message = $this->t('Your previously saved DOI status was wrong and the DOI @doi you provided could not be verified via a remote API call for ADO with UUID @uuid. Check your ap:task key values.',
+            [
+              '@uuid' => $entity->uuid(),
+              '@doi' =>$previous_ap_task_passed_array['doi'],
+            ]);
+          $workflow_status['error'][] = $message;
+        }
+        // Remove the data.
+        $ap_task_parsed_data = [];
+      }
+
+
       if (($ap_task_passed_array['valid'] == $previous_ap_task_passed_array['valid']) && $ap_task_passed_array['valid']) {
         // Pre-set this. Worst case scenario we will return the same data.
         $ap_task_parsed_data = $ap_task_passed_array;
@@ -552,15 +586,31 @@ class DataCiteService {
                 ]);
               $workflow_status['error'][] = $message;
               // What is else here?
+              if (in_array($ap_task_passed_array['event'] ?? NULL, ["publish","register"]) && !$entity_status) {
+                $message = $this->t('You can not transition to @event for DOI @doi for ADO with UUID @uuid because only Published ADOs can have public DOIs.',
+                  [
+                    '@uuid' => $entity->uuid(),
+                    '@doi' => $ap_task_passed_array['doi'],
+                    '@event' => $ap_task_passed_array['event'],
+                  ]);
+                $workflow_status['error'][] = $message;
+              }
             }
           }
         }
       }
       elseif ($previous_ap_task_passed_array['valid'] && !$ap_task_passed_array['valid']) {
         // Previous is OK, new one is not Valid. This includes a previously errored one though. So no action.
+        // We restore the previous state but no data is sent to the API.
         $ap_task_parsed_data = $previous_ap_task_passed_array;
+        $message = $this->t('Your API DataCite Task data is invalid but the previous one from a revision was Ok. Restoring for UUID @uuid, but no further action will be executed',
+          [
+            '@uuid' => $entity->uuid(),
+            '@doi' =>$previous_ap_task_passed_array['doi'],
+          ]);
+        $workflow_status['error'][] = $message;
       }
-      else {
+      elseif (!$previous_ap_task_passed_array['valid'] && !$ap_task_passed_array['valid']) {
         // Both wrong. If invalid. We delete right? Yeah.
         $ap_task_parsed_data = [];
         $message = $this->t('Your API DataCite Task data is invalid. Removing it from ADO with UUID @uuid',
@@ -572,7 +622,8 @@ class DataCiteService {
       }
       // So if the previous one is invalid and the new one is valid?
       // Should never happen but there are edge cases. e.g. the Structure was pushed into the ADO but
-      // DataCite was not enabled. So it lingers around.
+      // But also a revert on a revision.
+      // when DataCite was not enabled/bug/etc. So it lingers around.
       $doi_prefix = $this->config->get('doi_prefix');
       if (count($calls) && $doi_prefix) {
         // Call the APIs.
@@ -604,7 +655,7 @@ class DataCiteService {
                 $workflow_status['info'][] = $message;
               }
               else {
-                $ap_task_parsed_data['status'] = 'error';
+                $ap_task_parsed_data['error'] = true;
                 $message = $this->t('DOI Minting failed for ADO with UUID @uuid.',
                   [
                     '@uuid' => $entity->uuid(),
@@ -632,7 +683,7 @@ class DataCiteService {
                   $workflow_status['info'][] = $message;
                 }
                 else {
-                  $ap_task_parsed_data['status'] = 'error';
+                  $ap_task_parsed_data['error'] = TRUE;
                   $message = $this->t('DOI @doi  Metadata and Info update failed for ADO with UUID @uuid.',
                     [
                       '@uuid' => $entity->uuid(),
@@ -672,19 +723,20 @@ class DataCiteService {
               '@uuid' => $entity->uuid(),
             ]);
           $workflow_status['error'][] = $message;
-          $ap_task_parsed_data['status'] = 'error';
+          $ap_task_parsed_data['error'] = TRUE;
         }
       }
       $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
       // Log all workflow Status
       foreach (($workflow_status['error'] ?? []) as $error_message) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($error_message);
+        // Also log to main Drupal logger.
+        $this->loggerFactory->get('fragaria')->error($error_message);
       }
 
       foreach (($workflow_status['info'] ?? []) as $info_message) {
         $this->loggerFactory->get(static::LOGGER_NAME_PEPPERMINT)->info($info_message);
       }
-
       return $datacite_metadata;
     }
     else {
@@ -755,7 +807,10 @@ class DataCiteService {
         // SO A RE-SAVE using RAW JSON or a programmatic Update via VBO will not re-set an event?
         // To be safe here. We assume the opposite, that it is invalid.
         $valid = FALSE;
-        // Here we demand a status/DOI combo.
+        // Here we demand a status/DOI combo. But if for some reason we lack
+        // a status, we will request the status from the REST API.
+        // Why? There are ways a previous revision (when reverting a revision) might
+        // have a DOI but no status (e.g failed/pre enablign API data)
         if (isset($datacite_metadata['status'])) {
           if (in_array($datacite_metadata['status'], static::DATACITE_FRAGARIA_VALID_STATUSES)) {
             $current_status = $datacite_metadata['status'];
@@ -763,6 +818,35 @@ class DataCiteService {
               $valid = $this->validateDOI($datacite_metadata['doi']);
               if ($valid) {
                 $DOI = $datacite_metadata['doi'];
+              }
+            }
+          }
+        }
+        else {
+          if (isset($datacite_metadata['doi']) && is_string($datacite_metadata['doi'])) {
+            $valid = $this->validateDOI($datacite_metadata['doi']);
+            if ($valid) {
+              $DOI = $datacite_metadata['doi'];
+              // Now try to get a status from the API.
+              $check_existing_doi = $this->fetchDOI($DOI);
+              if ($check_existing_doi[0] && ($check_existing_doi[1]['data']['attributes'] ?? FALSE)) {
+                $doi = $check_existing_doi[1]['data']['attributes']['doi'] ?? NULL;
+                $doi_status = $check_existing_doi[1]['data']['attributes']['state'] ?? NULL;
+                // To make this work, we will set the Old data to the known data from the API.
+                if ($doi_status && $doi) {
+                  $current_status = $doi_status;
+                  $failed_remote = FALSE;
+                }
+                else {
+                  $DOI = NULL;
+                  $valid = FALSE;
+                  $current_status = NULL;
+                }
+              }
+              else {
+                $DOI = NULL;
+                $valid = FALSE;
+                $current_status = NULL;
               }
             }
           }
@@ -789,7 +873,7 @@ class DataCiteService {
       return $datacite_metadata;
     }
     else {
-      if (($parsed_doi_data['status'] ?? NULL) == 'error') {
+      if (($parsed_doi_data['error'] ?? FALSE) == TRUE) {
         // Only there we keep the event.
         // if there is an event at all.
         if ($parsed_doi_data['event']) {
