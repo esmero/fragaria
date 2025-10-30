@@ -48,8 +48,8 @@ class DataCiteService {
    * ap:task -> ap:fragria -> datacite entry.
    *
    */
-  private const DATACITE_FRAGARIA_VALID_EVENTS = ['draft','register','publish', 'delete'];
-  private const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error'];
+  public const DATACITE_FRAGARIA_VALID_EVENTS = ['draft','register','publish', 'delete'];
+  public const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error'];
 
   /**
    * The entity manager service.

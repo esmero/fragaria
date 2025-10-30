@@ -17,3 +17,8 @@ services:
     tags:
       - { name: event_subscriber }
     arguments: [ '@string_translation', '@messenger', '@logger.factory', '@current_user', '@fragaria.datacite' ]
+  fragaria.twig.TwigExtension:
+    class: Drupal\fragaria\TwigExtension
+    tags:
+      - { name: twig.extension }
+    arguments: ['@fragaria.datacite']
