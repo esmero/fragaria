@@ -89,7 +89,7 @@ class TwigExtension extends AbstractExtension {
       }
       else {
         // If no previous data, validate that the event is valid
-        if ($event && in_array($event, $valid_events)) {
+        if ($event && ($event !== "delete") && in_array($event, $valid_events)) {
           $datacite_value['ap:tasks']['ap:fragaria'][$api]['event'] = $event;
         }
       }
