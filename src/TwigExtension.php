@@ -88,10 +88,12 @@ class TwigExtension extends AbstractExtension {
         }
       }
       else {
-        $datacite_value['ap:tasks']['ap:fragaria'][$api]['event'] = $event;
+        // If no previous data, validate that the event is valid
+        if ($event && in_array($event, $valid_events)) {
+          $datacite_value['ap:tasks']['ap:fragaria'][$api]['event'] = $event;
+        }
       }
     }
-
     return $datacite_value;
   }
 }
