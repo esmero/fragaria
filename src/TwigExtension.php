@@ -52,7 +52,7 @@ class TwigExtension extends AbstractExtension {
     }
     if ($this->dataCiteService->isActive()) {
       $api = $this->dataCiteService->getActiveAPI();
-      if ($original_data['ap:tasks']['ap:fragaria'][$api]) {
+      if ($original_data['ap:tasks']['ap:fragaria'][$api] ?? NULL) {
         $datacite_value['ap:tasks']['ap:fragaria'][$api] = $original_data['ap:tasks']['ap:fragaria'][$api] ?? NULL;
       }
       if (!empty($datacite_value)) {
