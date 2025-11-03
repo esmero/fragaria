@@ -341,7 +341,7 @@
         "schemaOrg": {
           "type": "string"
         },
-        "resourceType": {
+        "resourceTypeGeneral": {
           "type": "string",
           "enum": [
             "Audiovisual",
@@ -378,7 +378,7 @@
             "Other"
           ]
         },
-        "resourceTypeGeneral": {
+        "resourceType": {
           "type": "string"
         }
       },
