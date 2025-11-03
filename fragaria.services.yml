@@ -2,3 +2,23 @@ services:
   fragaria.route_subscriber:
     class: Drupal\fragaria\Routing\FragariaRedirectRoutingService
     arguments: ['@entity_type.manager']
+  fragaria.datacite:
+    class: Drupal\fragaria\DataCiteService
+    arguments: ['@entity_type.manager','@config.factory', '@current_user', '@logger.factory', '@http_client', '@renderer']
+    tags:
+      - { name: backend_overridable }
+  fragaria.datacite_subscriber:
+    class: Drupal\fragaria\EventSubscriber\FragariaEventPresaveSubscriberDataCite
+    tags:
+      - {name: event_subscriber}
+    arguments: ['@string_translation', '@messenger', '@logger.factory', '@current_user', '@fragaria.datacite']
+  fragaria.datacite_insert_subscriber:
+    class: Drupal\fragaria\EventSubscriber\FragariaEventInsertSubscriberDataCite
+    tags:
+      - { name: event_subscriber }
+    arguments: [ '@string_translation', '@messenger', '@logger.factory', '@current_user', '@fragaria.datacite' ]
+  fragaria.twig.TwigExtension:
+    class: Drupal\fragaria\TwigExtension
+    tags:
+      - { name: twig.extension }
+    arguments: ['@fragaria.datacite']

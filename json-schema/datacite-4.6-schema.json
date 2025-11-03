@@ -1,0 +1,854 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataCite Metadata Working Group. (2024). DataCite Metadata Schema Documentation for the Publication and Citation of Research Data and Other Research Outputs. Version 4.6.",
+  "type": "object",
+  "properties": {
+    "doi": {
+      "type": "string"
+    },
+    "prefix": {
+      "type": "string"
+    },
+    "suffix": {
+      "type": "string"
+    },
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string"
+          },
+          "identifierType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier"
+        ]
+      }
+    },
+    "alternateIdentifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "alternateIdentifierType": {
+            "type": "string"
+          },
+          "alternateIdentifier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "alternateIdentifier"
+        ]
+      }
+    },
+    "creators": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "nameType": {
+            "type": "string",
+            "enum": [
+              "Organizational",
+              "Personal"
+            ]
+          },
+          "givenName": {
+            "type": "string"
+          },
+          "familyName": {
+            "type": "string"
+          },
+          "affiliation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "schemeUri": {
+                  "type": "string"
+                },
+                "affiliationIdentifier": {
+                  "type": "string"
+                },
+                "affiliationIdentifierScheme": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "nameIdentifiers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "schemeUri": {
+                  "type": "string"
+                },
+                "nameIdentifier": {
+                  "type": "string"
+                },
+                "nameIdentifierScheme": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "nameIdentifier"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "titles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "titleType": {
+            "type": "string",
+            "enum": [
+              "AlternativeTitle",
+              "Subtitle",
+              "TranslatedTitle",
+              "Other"
+            ]
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    "publisher": {
+      "type": "object",
+      "properties": {
+        "lang": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "schemeUri": {
+          "type": "string"
+        },
+        "publisherIdentifier": {
+          "type": "string"
+        },
+        "publisherIdentifierScheme": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "publicationYear": {
+      "type": "number"
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "schemeUri": {
+            "type": "string"
+          },
+          "subjectScheme": {
+            "type": "string"
+          },
+          "classificationCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject"
+        ]
+      }
+    },
+    "contributors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "nameType": {
+            "type": "string",
+            "enum": [
+              "Organizational",
+              "Personal"
+            ]
+          },
+          "givenName": {
+            "type": "string"
+          },
+          "familyName": {
+            "type": "string"
+          },
+          "affiliation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "schemeUri": {
+                  "type": "string"
+                },
+                "affiliationIdentifier": {
+                  "type": "string"
+                },
+                "affiliationIdentifierScheme": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "contributorType": {
+            "type": "string",
+            "enum": [
+              "ContactPerson",
+              "DataCollector",
+              "DataCurator",
+              "DataManager",
+              "Distributor",
+              "Editor",
+              "HostingInstitution",
+              "Other",
+              "Producer",
+              "ProjectLeader",
+              "ProjectManager",
+              "ProjectMember",
+              "RegistrationAgency",
+              "RegistrationAuthority",
+              "RelatedPerson",
+              "ResearchGroup",
+              "RightsHolder",
+              "Researcher",
+              "Sponsor",
+              "Supervisor",
+              "Translator",
+              "WorkPackageLeader"
+            ]
+          },
+          "nameIdentifiers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "schemeUri": {
+                  "type": "string"
+                },
+                "nameIdentifier": {
+                  "type": "string"
+                },
+                "nameIdentifierScheme": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "nameIdentifier"
+              ]
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    "dates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "dateType": {
+            "type": "string",
+            "enum": [
+              "Accepted",
+              "Available",
+              "Collected",
+              "Copyrighted",
+              "Coverage",
+              "Created",
+              "Issued",
+              "Other",
+              "Submitted",
+              "Updated",
+              "Valid",
+              "Withdrawn"
+            ]
+          },
+          "dateInformation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "dateType"
+        ]
+      }
+    },
+    "language": {
+      "type": "string"
+    },
+    "types": {
+      "type": "object",
+      "properties": {
+        "ris": {
+          "type": "string"
+        },
+        "bibtex": {
+          "type": "string"
+        },
+        "citeproc": {
+          "type": "string"
+        },
+        "schemaOrg": {
+          "type": "string"
+        },
+        "resourceType": {
+          "type": "string",
+          "enum": [
+            "Audiovisual",
+            "Award",
+            "Book",
+            "BookChapter",
+            "Collection",
+            "ComputationalNotebook",
+            "ConferencePaper",
+            "ConferenceProceeding",
+            "DataPaper",
+            "Dataset",
+            "Dissertation",
+            "Event",
+            "Image",
+            "Instrument",
+            "InteractiveResource",
+            "Journal",
+            "JournalArticle",
+            "Model",
+            "OutputManagementPlan",
+            "PeerReview",
+            "PhysicalObject",
+            "Preprint",
+            "Project",
+            "Report",
+            "Service",
+            "Software",
+            "Sound",
+            "Standard",
+            "StudyRegistration",
+            "Text",
+            "Workflow",
+            "Other"
+          ]
+        },
+        "resourceTypeGeneral": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resourceType"
+      ]
+    },
+    "relatedIdentifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relationType": {
+            "type": "string",
+            "enum": [
+              "IsCitedBy",
+              "Cites",
+              "IsSupplementTo",
+              "IsSupplementedBy",
+              "IsContinuedBy",
+              "Continues",
+              "IsNewVersionOf",
+              "IsPreviousVersionOf",
+              "IsPartOf",
+              "HasPart",
+              "IsPublishedIn",
+              "IsReferencedBy",
+              "References",
+              "IsDocumentedBy",
+              "Documents",
+              "IsCompiledBy",
+              "Compiles",
+              "IsVariantFormOf",
+              "IsOriginalFormOf",
+              "IsIdenticalTo",
+              "HasMetadata",
+              "IsMetadataFor",
+              "Reviews",
+              "IsReviewedBy",
+              "IsDerivedFrom",
+              "IsSourceOf",
+              "Describes",
+              "IsDescribedBy",
+              "HasVersion",
+              "IsVersionOf",
+              "Requires",
+              "IsRequiredBy",
+              "Obsoletes",
+              "IsObsoletedBy",
+              "Collects",
+              "IsCollectedBy",
+              "HasTranslation",
+              "IsTranslationOf"
+            ]
+          },
+          "relatedIdentifier": {
+            "type": "string"
+          },
+          "resourceTypeGeneral": {
+            "type": "string"
+          },
+          "relatedIdentifierType": {
+            "type": "string",
+            "enum": [
+              "ARK",
+              "arXiv",
+              "bibcode",
+              "CSTR",
+              "DOI",
+              "EAN13",
+              "EISSN",
+              "Handle",
+              "IGSN",
+              "ISBN",
+              "ISSN",
+              "ISTC",
+              "LISSN",
+              "LSID",
+              "PMID",
+              "PURL",
+              "RRID",
+              "UPC",
+              "URL",
+              "URN",
+              "w3id"
+            ]
+          }
+        },
+        "required": [
+          "relationType",
+          "relatedIdentifier"
+        ]
+      }
+    },
+    "relatedItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "titles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "titleType": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title"
+              ]
+            }
+          },
+          "volume": {
+            "type": "string"
+          },
+          "edition": {
+            "type": "string"
+          },
+          "creators": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "nameType": {
+                  "type": "string",
+                  "enum": [
+                    "Organizational",
+                    "Personal"
+                  ]
+                },
+                "givenName": {
+                  "type": "string"
+                },
+                "familyName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "nameType",
+                "givenName",
+                "familyName"
+              ]
+            }
+          },
+          "lastPage": {
+            "type": "string"
+          },
+          "firstPage": {
+            "type": "string"
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "numberType": {
+            "type": "string",
+            "enum": [
+              "Article",
+              "Chapter",
+              "Report",
+              "Other"
+            ]
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "nameType": {
+                  "type": "string",
+                  "enum": [
+                    "Organizational",
+                    "Personal"
+                  ]
+                },
+                "givenName": {
+                  "type": "string"
+                },
+                "familyName": {
+                  "type": "string"
+                },
+                "contributorType": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "relationType": {
+            "type": "string",
+            "enum": [
+              "IsCitedBy",
+              "Cites",
+              "IsSupplementTo",
+              "IsSupplementedBy",
+              "IsContinuedBy",
+              "Continues",
+              "IsNewVersionOf",
+              "IsPreviousVersionOf",
+              "IsPartOf",
+              "HasPart",
+              "IsPublishedIn",
+              "IsReferencedBy",
+              "References",
+              "IsDocumentedBy",
+              "Documents",
+              "IsCompiledBy",
+              "Compiles",
+              "IsVariantFormOf",
+              "IsOriginalFormOf",
+              "IsIdenticalTo",
+              "HasMetadata",
+              "IsMetadataFor",
+              "Reviews",
+              "IsReviewedBy",
+              "IsDerivedFrom",
+              "IsSourceOf",
+              "Describes",
+              "IsDescribedBy",
+              "HasVersion",
+              "IsVersionOf",
+              "Requires",
+              "IsRequiredBy",
+              "Obsoletes",
+              "IsObsoletedBy",
+              "Collects",
+              "IsCollectedBy",
+              "HasTranslation",
+              "IsTranslationOf"
+            ]
+          },
+          "publicationYear": {
+            "type": "string"
+          },
+          "relatedItemType": {
+            "type": "string"
+          },
+          "relatedItemIdentifier": {
+            "type": "object",
+            "properties": {
+              "relatedItemIdentifier": {
+                "type": "string"
+              },
+              "relatedItemIdentifierType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "relatedItemIdentifier"
+            ]
+          }
+        },
+        "required": [
+          "titles"
+        ]
+      }
+    },
+    "sizes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "formats": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string"
+    },
+    "rightsList": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "rights": {
+            "type": "string"
+          },
+          "rightsUri": {
+            "type": "string"
+          },
+          "schemeUri": {
+            "type": "string"
+          },
+          "rightsIdentifier": {
+            "type": "string"
+          },
+          "rightsIdentifierScheme": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "descriptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "descriptionType": {
+            "type": "string",
+            "enum": [
+              "Abstract",
+              "Methods",
+              "SeriesInformation",
+              "TableOfContents",
+              "TechnicalInfo",
+              "Other"
+            ]
+          }
+        },
+        "required": [
+          "description"
+        ]
+      }
+    },
+    "geoLocations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "geoLocationBox": {
+            "type": "object",
+            "properties": {
+              "eastBoundLongitude": {
+                "type": "string"
+              },
+              "northBoundLatitude": {
+                "type": "string"
+              },
+              "southBoundLatitude": {
+                "type": "string"
+              },
+              "westBoundLongitude": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "eastBoundLongitude",
+              "northBoundLatitude",
+              "southBoundLatitude",
+              "westBoundLongitude"
+            ]
+          },
+          "geoLocationPlace": {
+            "type": "string"
+          },
+          "geoLocationPoint": {
+            "type": "object",
+            "properties": {
+              "pointLatitude": {
+                "type": "string"
+              },
+              "pointLongitude": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "pointLatitude",
+              "pointLongitude"
+            ]
+          },
+          "geoLocationPolygon": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "polygonPoint": {
+                  "type": "object",
+                  "properties": {
+                    "pointLatitude": {
+                      "type": "string"
+                    },
+                    "pointLongitude": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pointLatitude",
+                    "pointLongitude"
+                  ]
+                }
+              },
+              "required": [
+                "polygonPoint"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "fundingReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "awardUri": {
+            "type": "string"
+          },
+          "awardTitle": {
+            "type": "string"
+          },
+          "funderName": {
+            "type": "string"
+          },
+          "awardNumber": {
+            "type": "string"
+          },
+          "funderIdentifier": {
+            "type": "string"
+          },
+          "funderIdentifierType": {
+            "type": "string",
+            "enum": [
+              "ISNI",
+              "GRID",
+              "ROR",
+              "Crossref Funder ID",
+              "Other"
+            ]
+          }
+        },
+        "required": [
+          "funderName"
+        ]
+      }
+    },
+    "url": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "creators",
+    "titles",
+    "publisher",
+    "publicationYear",
+    "types"
+  ]
+}

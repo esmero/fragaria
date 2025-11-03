@@ -5,3 +5,10 @@ entity.fragariaredirect_entity.collection:
   description: 'Configure redirects to ADOs using dynamic routes matched against Search API field values'
   parent: strawberryfield.group.admin
   weight: 100
+
+fragaria.datacite_settings_form:
+  title: 'DataCite Services'
+  route_name: fragaria.datacite_settings_form
+  description: 'Configure DataCite DOI Integration'
+  parent: strawberryfield.group.admin
+  weight: 100
