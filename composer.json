@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "strawberryfield/strawberryfield":"1.*",
-        "strawberryfield/webform_strawberryfield":"1.*"
+        "strawberryfield/strawberryfield":"1.* || 2.*",
+        "strawberryfield/webform_strawberryfield":"1.* || 2.*"
     }
 }
