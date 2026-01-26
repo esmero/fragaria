@@ -88,3 +88,6 @@ fragaria.fragariaredirect_entity.*:
       label: 'Segments of the exposed URL to be sent against search API'
       sequence:
         - type: string
+    custom_404:
+      type: string
+      label: 'A valid relative path for 404 responses. Leave empty for the default'

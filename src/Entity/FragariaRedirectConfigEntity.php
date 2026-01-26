@@ -50,7 +50,8 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "redirect_http_code",
  *     "cache",
  *     "active",
- *     "do_replacement"
+ *     "do_replacement",
+ *     "custom_404",
  *   },
  *   links = {
  *     "edit-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit",
@@ -88,7 +89,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   /**
    * What segments of the resolved URL to be used for the Search API pattern matching
    *
-   * @var string
+   * @var array
    */
   public array $segments_in_pattern = [];
 
@@ -150,6 +151,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var string
    */
   protected $redirect_http_code = '303';
+
+
+  /**
+   * The Type of HTTP redirect Code to use
+   *
+   * @var ?string
+   */
+  protected ?string $custom_404 = NULL;
 
   /**
    * If the Config Entity is active or not.
@@ -347,4 +356,9 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   public function setSegmentsInPattern(array $segments_in_pattern): void {
     $this->segments_in_pattern = $segments_in_pattern;
   }
+
+  public function getCustom404(): ?string {
+    return $this->custom_404;
+  }
+
 }

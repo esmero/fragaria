@@ -8,6 +8,9 @@ use Drupal\Core\Entity\EntityForm;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Path\PathValidatorInterface;
+use Drupal\Core\Routing\RequestContext;
+use Drupal\path_alias\AliasManagerInterface;
 use Drupal\strawberryfield\StrawberryfieldUtilityService;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
@@ -24,6 +27,21 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
   private StrawberryfieldUtilityService $strawberryfieldUtility;
 
   /**
+   * @var \Drupal\Core\Path\PathValidatorInterface
+   */
+  private PathValidatorInterface $pathValidator;
+
+  /**
+   * @var \Drupal\Core\Routing\RequestContext
+   */
+  private RequestContext $requestContext;
+
+  /**
+   * @var \Drupal\path_alias\AliasManagerInterface
+   */
+  private AliasManagerInterface $aliasManager;
+
+  /**
    * FragariaRedirectConfigEntityForm constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
@@ -31,10 +49,16 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
-    StrawberryfieldUtilityService $strawberryfield_utility_service
+    StrawberryfieldUtilityService $strawberryfield_utility_service,
+    PathValidatorInterface $path_validator,
+    RequestContext $request_context,
+    AliasManagerInterface $alias_manager
   ) {
     $this->entityTypeManager = $entityTypeManager;
     $this->strawberryfieldUtility = $strawberryfield_utility_service;
+    $this->pathValidator = $path_validator;
+    $this->requestContext = $request_context;
+    $this->aliasManager = $alias_manager;
   }
 
   /**
@@ -44,6 +68,9 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     return new static(
       $container->get('entity_type.manager'),
       $container->get('strawberryfield.utility'),
+      $container->get('path.validator'),
+      $container->get('router.request_context'),
+      $container->get('path_alias.manager'),
     );
   }
 
@@ -167,17 +194,17 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
       ],
       'search_api_field_value_prefixes_element' => [
         '#type' => 'textarea',
-        '#title' => $this->t('Add static prefixes for to the variable part/argument of the path. '),
+        '#title' => $this->t('Add static prefixes for to the variable part/argument of the path just before matching against the index.'),
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getSearchApiFieldValuePrefixes()): NULL,
-        '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/1 and the indexed value is "namespace:1". In that case add "namespace:" here.'),
+        '#description' => $this->t('Not part of the PATH. Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/1 and the indexed value is "namespace:1". In that case add "namespace:" here.'),
       ],
       'search_api_field_value_suffixes_element' => [
         '#type' => 'textarea',
-        '#title' => $this->t('Add static suffixes for to the variable part/argument of the path. '),
+        '#title' => $this->t('Add static suffixes for to the variable part/argument of the path just before matching against the index.'),
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getSearchApiFieldValueSuffixes()): NULL,
-        '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/namespace:1 and the indexed value is "namespace:1-page". In that case add "-page" here.'),
+        '#description' => $this->t('Not part of the PATH. Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/namespace:1 and the indexed value is "namespace:1-page". In that case add "-page" here.'),
       ],
       'segments_in_pattern' => [
         '#type' => 'checkboxes',
@@ -201,6 +228,13 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => TRUE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getRedirectHttpCode(): NULL,
       ],
+      'custom_404' => [
+        '#type' => 'textfield',
+        '#title' => $this->t('A relative path to be used on not found/404 page.'),
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getCustom404(): NULL,
+        '#required' => FALSE,
+        '#field_prefix' => $this->requestContext->getCompleteBaseUrl(),
+      ],
       'active' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Is this Fragaria Redirect Route active?'),
@@ -210,6 +244,20 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     ];
 
     return $form;
+  }
+
+  public function validateForm(array &$form, FormStateInterface $form_state) {
+    //Validate Custom 404 page.
+    if (!$form_state->isValueEmpty('custom_404')) {
+      $form_state->setValueForElement($form['custom_404'], $this->aliasManager->getPathByAlias($form_state->getValue('custom_404')));
+    }
+    if (($value = $form_state->getValue('custom_404')) && $value[0] !== '/') {
+      $form_state->setErrorByName('custom_404', $this->t("The path '%path' has to start with a slash.", ['%path' => $form_state->getValue('custom_404')]));
+    }
+    if (!$form_state->isValueEmpty('custom_404') && !$this->pathValidator->isValid($form_state->getValue('custom_404'))) {
+      $form_state->setErrorByName('custom_404', $this->t("Either the path '%path' is invalid or you do not have access to it.", ['%path' => $form_state->getValue('custom_404')]));
+    }
+    parent::validateForm($form, $form_state);
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state) {

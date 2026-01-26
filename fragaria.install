@@ -70,6 +70,7 @@ function fragaria_update_10002() {
             }
         }
         $entity_config_export[]  = "segments_in_pattern";
+        $entity_config_export[]  = "custom_404";
         $entity_type->set('config_export', $entity_config_export);
         \Drupal::entityDefinitionUpdateManager()->updateEntityType($entity_type);
         $message = "Fragaria Entity's Schema and Values updated to handle multiple prefixes and configurable segment matching.";

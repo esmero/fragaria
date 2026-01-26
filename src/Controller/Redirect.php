@@ -8,16 +8,20 @@
 
 namespace Drupal\fragaria\Controller;
 
+use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Routing\AccessAwareRouterInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\fragaria\Entity\FragariaRedirectConfigEntity;
 use Drupal\search_api\ParseMode\ParseModePluginManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -80,7 +84,10 @@ class Redirect extends ControllerBase {
   public function redirect_processor(Request $request, $key) {
     $entity = $this->getFragariaEntityFromRouteMatch($this->routeMatch);
     if ($entity) {
-      $object = $this->searchAPIfindKey($key, $entity);
+      // Complete match without Domain. WE do not allow the domain to be used
+      // That can be simulated with a prefix.
+      $pathinfo = $this->routeMatch->getRouteObject()->getPath();
+      $object = $this->searchAPIfindKey($key, $pathinfo, $entity);
       if ($object) {
         $url = $object->toUrl('canonical', ['absolute' => FALSE])->toString();
         $response = new RedirectResponse($url, (int) $entity->getRedirectHttpCode());
@@ -143,19 +150,40 @@ class Redirect extends ControllerBase {
   }
 
   /**
-   * @param                                                      $key
+   * @param string $key
+   *    The variable part
+   * @param string $path
+   *    The complete path. will be /prefixes()/{key}/suffixes
    * @param \Drupal\fragaria\Entity\FragariaRedirectConfigEntity $entity
    *
    * @return mixed|null
    * @throws \Drupal\Component\Plugin\Exception\InvalidPluginDefinitionException
    * @throws \Drupal\Component\Plugin\Exception\PluginNotFoundException
    */
-  private function searchAPIfindKey($key, FragariaRedirectConfigEntity $entity) {
+  private function searchAPIfindKey(string $key, string $path, FragariaRedirectConfigEntity $entity) {
 
     /** @var \Drupal\search_api\IndexInterface[] $indexes */
     $index = \Drupal::entityTypeManager()
       ->getStorage('search_api_index')
       ->load($entity->getSearchApiIndex());
+
+    $decomposed_path =  array_filter(explode("/", $path));
+    $decomposed_static_prefix = '/';
+    $decomposed_static_suffix = '/';
+    $found_key = false;
+    foreach ($decomposed_path as $segment) {
+        if ($found_key) {
+          $decomposed_static_suffix = $decomposed_static_suffix . $segment . '/';
+        }
+        else {
+          if ($segment == "{key}") {
+            $found_key = TRUE;
+          }
+          else {
+            $decomposed_static_prefix = $decomposed_static_prefix . $segment . '/';
+          }
+        }
+    }
 
     $value = NULL;
     if ($index) {
@@ -165,20 +193,33 @@ class Redirect extends ControllerBase {
         'search_api_retrieved_field_values',
         [$entity->getSearchApiField() => $entity->getSearchApiField()]
       );
-
-      $value_with_prefixes = [$key];
-      if ($entity->getSearchApiFieldValuePrefixes()) {
-        foreach ($entity->getSearchApiFieldValuePrefixes() as $prefix) {
-          $value_with_prefixes[] = $prefix.$key;
-        }
+      $segments_in_pattern = $entity->getSegmentsInPattern();
+      // Should never happen but people could insert a config entity manually
+      // via drush. If so we default to variable part
+      if (empty($segments_in_pattern)) {
+        $segments_in_pattern = ['variable'];
       }
-      if ($entity->getSearchApiFieldValueSuffixes()) {
-        foreach ($entity->getSearchApiFieldValueSuffixes() as $suffix) {
-          foreach ($value_with_prefixes as $prefixed) {
-            $value_with_prefixes[] = $prefixed.$suffix;
+      if (in_array('variable', $segments_in_pattern)) {
+        $value_with_prefixes = [$key];
+        if ($entity->getSearchApiFieldValuePrefixes()) {
+          foreach ($entity->getSearchApiFieldValuePrefixes() as $prefix) {
+            $value_with_prefixes[] = $prefix . $key;
+          }
+        }
+        if ($entity->getSearchApiFieldValueSuffixes()) {
+          foreach ($entity->getSearchApiFieldValueSuffixes() as $suffix) {
+            foreach ($value_with_prefixes as $prefixed) {
+              $value_with_prefixes[] = $prefixed . $suffix;
+            }
           }
         }
       }
+      // Now for the extra prefix part.
+      if (in_array('prefixes', $segments_in_pattern)) {
+        foreach ($value_with_prefixes as $prefixed) {
+        }
+      }
+
 
       if (count($value_with_prefixes) == 1) {
         $query->addCondition(
@@ -200,4 +241,37 @@ class Redirect extends ControllerBase {
   }
 
 
+  /**
+   * Makes a subrequest to retrieve the custom error page.
+   *
+   * @param \Symfony\Component\HttpKernel\Event\ExceptionEvent $event
+   *   The event to process.
+   * @param string $custom_path
+   *   The custom path to which to make a subrequest for this error message.
+   * @param int $status_code
+   *   The status code for the error being handled.
+   */
+  protected function makeSubrequestToCustom404(ExceptionEvent $event, $custom_path) {
+    $url = Url::fromUserInput($custom_path);
+    if ($url->isRouted()) {
+      $access_result = $this->accessManager->checkNamedRoute($url->getRouteName(), $url->getRouteParameters(), NULL, TRUE);
+      $request = $event->getRequest();
+      if (!$request->attributes->has(AccessAwareRouterInterface::ACCESS_RESULT)) {
+        $request->attributes->set(AccessAwareRouterInterface::ACCESS_RESULT, $access_result);
+      }
+      else {
+        $existing_access_result = $request->attributes->get(AccessAwareRouterInterface::ACCESS_RESULT);
+        if ($existing_access_result instanceof RefinableCacheableDependencyInterface) {
+          $existing_access_result->addCacheableDependency($access_result);
+        }
+      }
+
+      // Only perform the subrequest if the custom path is actually accessible.
+      if (!$access_result->isAllowed()) {
+        return;
+      }
+    }
+
+    $this->makeSubrequest($event, $custom_path, Response::HTTP_NOT_FOUND);
+  }
 }
