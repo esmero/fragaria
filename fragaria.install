@@ -39,3 +39,40 @@ function fragaria_uninstall() {
   return t('Removing fragariaredirect_entity');
 }
 
+/**
+ * Implements hook_update_N().
+ *
+ * Updates Fragaria Redirect Config Entity to allow Multiple prefixes.
+ *
+ */
+function fragaria_update_10002() {
+    $message = "Nothing to update. Fragaria Entity is not installed.";
+    $entity_type = \Drupal::entityDefinitionUpdateManager()->getEntityType('fragariaredirect_entity');
+    if ($entity_type) {
+        $config_factory = \Drupal::configFactory();
+        foreach ($config_factory->listAll('fragaria.fragariaredirect_entity.') as $fragaria_config_name) {
+            $fragaria_config = $config_factory->getEditable($fragaria_config_name);
+            $prefix = $fragaria_config->get('path_prefix');
+            $prefixes = array_filter(array_map('trim', explode(PHP_EOL, $prefix)));
+            $fragaria_config->clear('path_prefix');
+            $fragaria_config->set('path_prefixes', $prefixes);
+            $fragaria_config->save(TRUE);
+        }
+
+        $entity_config_export = $entity_type->get('config_export');
+        $new_entity_config_export = [];
+        foreach($entity_config_export as $key) {
+            if ($key !== 'path_prefix') {
+                $new_entity_config_export[] = $key;
+            }
+            else {
+                $new_entity_config_export[] = 'path_prefixes';
+            }
+        }
+        $entity_config_export[]  = "segments_in_pattern";
+        $entity_type->set('config_export', $entity_config_export);
+        \Drupal::entityDefinitionUpdateManager()->updateEntityType($entity_type);
+        $message = "Fragaria Entity's Schema and Values updated to handle multiple prefixes and configurable segment matching.";
+    }
+    return $message;
+}

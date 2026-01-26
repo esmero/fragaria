@@ -39,7 +39,8 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "id",
  *     "label",
  *     "uuid",
- *     "path_prefix",
+ *     "path_prefixes",
+ *     "segments_in_pattern",
  *     "search_api_index",
  *     "search_api_field",
  *     "path_suffixes",
@@ -68,7 +69,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var string
    */
 
-  protected $id;
+  protected string $id;
 
   /**
    * The human-readable name of the form or view mode.
@@ -78,11 +79,19 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   protected string $label;
 
   /**
-   * Prefix this route will respond to
+   * Prefixes this route will respond to
+   *
+   * @var array
+   */
+  public array $path_prefixes = [];
+
+  /**
+   * What segments of the resolved URL to be used for the Search API pattern matching
    *
    * @var string
    */
-  public string $path_prefix;
+  public array $segments_in_pattern = [];
+
 
   /**
    * Additional Prefixes this route will respond to
@@ -227,8 +236,8 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   /**
    * @return string
    */
-  public function getPathPrefix(): string {
-    return $this->path_prefix;
+  public function getPathPrefixes(): array {
+    return $this->path_prefixes;
   }
 
   /**
@@ -331,5 +340,11 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
     $this->do_replacement = $do_replacement;
   }
 
+  public function getSegmentsInPattern(): array {
+    return $this->segments_in_pattern;
+  }
 
+  public function setSegmentsInPattern(array $segments_in_pattern): void {
+    $this->segments_in_pattern = $segments_in_pattern;
+  }
 }

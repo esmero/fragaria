@@ -29,3 +29,62 @@ fragaria.datacite:
     processor_entity_id:
       type: string
       label: "Uuid of the Metadata Display used to Cast DataCite valid metadata"
+fragaria.fragariaredirect_entity.*:
+  type: config_entity
+  label: 'Fragaria Redirect Config Entity'
+  mapping:
+    uuid:
+    langcode: en
+    status: true
+    id:
+      type: string
+      label: 'ID'
+    label:
+      type: string
+      label: 'Label'
+    path_prefixes:
+      type: sequence
+      label: 'Path Prefixes'
+      sequence:
+        - type: string
+    search_api_index:
+      type: string
+      label: 'Search API Index'
+    search_api_field:
+      type: string
+      label: 'Saerch API Field'
+    path_suffixes:
+      type: sequence
+      label: 'Path Suffixes'
+      sequence:
+        - type: string
+    search_api_field_value_prefixes:
+      type: sequence
+      label: 'search api field value prefixes'
+      sequence:
+        - type: string
+    search_api_field_value_suffixes:
+      type: sequence
+      label: 'search api field value Suffixes'
+      sequence:
+        - type: string
+    variable_path_suffix:
+      type: boolean
+      label: 'Variable Path Suffix'
+    redirect_http_code:
+      type: string
+      label: 'Redirect HTTP Code'
+    cache:
+      type: boolean
+      label: 'Cached'
+    active:
+       type: boolean
+       label: 'Active'
+    do_replacement:
+      type: boolean
+      label: 'If do/UUID replacement is added'
+    segments_in_pattern:
+      type: sequence
+      label: 'Segments of the exposed URL to be sent against search API'
+      sequence:
+        - type: string

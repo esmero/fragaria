@@ -14,7 +14,7 @@ use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\format_strawberryfield\Entity\MetadataExposeConfigEntity;
 
 /**
- * Form handler for metadataexpose_entity config entity add and edit.
+ * Form handler for Fragaria Redirect config entity add and edit.
  */
 class FragariaRedirectConfigEntityForm extends EntityForm {
 
@@ -23,11 +23,11 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
    */
   private StrawberryfieldUtilityService $strawberryfieldUtility;
 
-
   /**
    * FragariaRedirectConfigEntityForm constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   * @param \Drupal\strawberryfield\StrawberryfieldUtilityService $strawberryfield_utility_service
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
@@ -90,7 +90,8 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
           $field_options[$key] = $field['label'];
         }
     }
-
+    $prefixes = !$fragariaredirect_config->isNew() ? $fragariaredirect_config->getPathPrefixes() : NULL;
+    $prefixes = is_array($prefixes) ? implode(PHP_EOL, $prefixes ?? '') : $prefixes;
     $form = [
       'label' => [
         '#id' => 'label',
@@ -113,21 +114,22 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
       'do_replacement' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Enable this if you removed your do/{uuid} path aliases but still (or finally) believe having REAL PURLs is important.'),
-        '#Description' => $this->t('This will disable suffixes, search api field matching and the Variable part will become the UUID of the node'),
+        '#description' => $this->t('This will disable suffixes, search api field matching and the Variable part will become the UUID of the node. You still need to define at least one PREFIX'),
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->isDoReplacement() : FALSE,
       ],
-      'path_prefix' => [
-        '#type' => 'textfield',
-        '#title' => $this->t('The Prefix (that follows your domain) for the Redirect Route.'),
+      'path_prefixes' => [
+        '#type' => 'textarea',
+        '#title' => $this->t('The Prefixes (that immediately follow after your domain name) for the Redirect Route.'),
+        '#description' => $this->t('Enter one per line. Danger: using built in route prefixes (e.g node, admin, ajax) might break your site. Be careful!'),
         '#required' => TRUE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getPathPrefix() : NULL,
+        '#default_value' => $prefixes,
       ],
       'path_suffixes_element' => [
         '#type' => 'textarea',
         '#title' => $this->t('The Suffixes (that follow the prefix + the variable part) for the Redirect Route.'),
         '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getPathSuffixes()): NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getPathSuffixes()): NULL,
         '#description' => $this->t('Enter one by line. This configuration option is not required.'),
       ],
       'variable_path_suffix' => [
@@ -167,15 +169,27 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#type' => 'textarea',
         '#title' => $this->t('Add static prefixes for to the variable part/argument of the path. '),
         '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiFieldValuePrefixes()): NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getSearchApiFieldValuePrefixes()): NULL,
         '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/1 and the indexed value is "namespace:1". In that case add "namespace:" here.'),
       ],
       'search_api_field_value_suffixes_element' => [
         '#type' => 'textarea',
         '#title' => $this->t('Add static suffixes for to the variable part/argument of the path. '),
         '#required' => FALSE,
-        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode("\n", $fragariaredirect_config->getSearchApiFieldValueSuffixes()): NULL,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getSearchApiFieldValueSuffixes()): NULL,
         '#description' => $this->t('Enter one by line. This is useful when the variable part of the ROUTE does not match 1:1 the actual indexed data. e.g the route is /oldrepo/namespace:1 and the indexed value is "namespace:1-page". In that case add "-page" here.'),
+      ],
+      'segments_in_pattern' => [
+        '#type' => 'checkboxes',
+        '#title' => $this->t('What parts of the matched URL should be sent to the search API to match against the field'),
+        '#description' => $this->t('Check all that apply. At least one needs to be enabled, by default the "variable" part is enabled and we recommend to keep it so.'),
+        '#options' => [
+          'prefixes' => 'static prefix(es)',
+          'variable' => 'variable (including variable suffix(es) if any)',
+          'suffixes' => 'static or catch all suffix(es)',
+        ],
+        '#required' => TRUE,
+        '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getSegmentsInPattern(): ['variable'],
       ],
       'redirect_http_code' => [
         '#type' => 'select',
@@ -202,16 +216,20 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     // Remove button and internal Form API values from submitted values.
     $form_state->cleanValues();
     $suffixes = $form_state->getValue('path_suffixes_element','');
-    $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $suffixes));
+    $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $suffixes));
     $suffixes = array_filter($suffixes);
+
+    $prefixes = $form_state->getValue('path_prefixes','');
+    $prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $prefixes));
+    $prefixes = array_filter($prefixes);
 
 
     $search_api_field_value_prefixes = $form_state->getValue('search_api_field_value_prefixes_element','');
-    $search_api_field_value_prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $search_api_field_value_prefixes));
+    $search_api_field_value_prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $search_api_field_value_prefixes));
     $search_api_field_value_prefixes = array_filter($search_api_field_value_prefixes);
 
     $search_api_field_value_suffixes = $form_state->getValue('search_api_field_value_suffixes_element','');
-    $search_api_field_value_suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode("\n", $search_api_field_value_suffixes));
+    $search_api_field_value_suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $search_api_field_value_suffixes));
     $search_api_field_value_suffixes = array_filter($search_api_field_value_suffixes);
     if ($form_state->getValue('do_replacement')) {
       $search_api_field_value_suffixes = [];
@@ -220,6 +238,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     }
 
     $this->entity = $this->buildEntity($form, $form_state);
+    $this->entity->setPathSuffixes($prefixes);
     $this->entity->setDoReplacement($form_state->getValue('do_replacement') ? TRUE : FALSE);
     $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
     $this->entity->setSearchApiFieldValueSuffixes(is_array($search_api_field_value_suffixes) ? $search_api_field_value_suffixes : []);
