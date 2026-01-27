@@ -145,7 +145,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->isDoReplacement() : FALSE,
       ],
-      'path_prefixes' => [
+      'path_prefixes_element' => [
         '#type' => 'textarea',
         '#title' => $this->t('The Prefixes (that immediately follow after your domain name) for the Redirect Route.'),
         '#description' => $this->t('Enter one per line. Danger: using built in route prefixes (e.g node, admin, ajax) might break your site. Be careful!'),
@@ -267,7 +267,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $suffixes));
     $suffixes = array_filter($suffixes);
 
-    $prefixes = $form_state->getValue('path_prefixes','');
+    $prefixes = $form_state->getValue('path_prefixes_element','');
     $prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $prefixes));
     $prefixes = array_filter($prefixes);
 
@@ -286,7 +286,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     }
 
     $this->entity = $this->buildEntity($form, $form_state);
-    $this->entity->setPathSuffixes($prefixes);
+    $this->entity->setPathPrefixes($prefixes);
     $this->entity->setDoReplacement($form_state->getValue('do_replacement') ? TRUE : FALSE);
     $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
     $this->entity->setSearchApiFieldValueSuffixes(is_array($search_api_field_value_suffixes) ? $search_api_field_value_suffixes : []);

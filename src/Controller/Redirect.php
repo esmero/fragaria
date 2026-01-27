@@ -8,13 +8,17 @@
 
 namespace Drupal\fragaria\Controller;
 
+use Drupal\Core\Access\AccessManagerInterface;
+use Drupal\Core\Cache\CacheableResponseInterface;
 use Drupal\Core\Cache\RefinableCacheableDependencyInterface;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Routing\AccessAwareRouterInterface;
+use Drupal\Core\Routing\RedirectDestinationInterface;
 use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Utility\Error;
 use Drupal\fragaria\Entity\FragariaRedirectConfigEntity;
 use Drupal\search_api\ParseMode\ParseModePluginManager;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -22,7 +26,11 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Drupal\Core\Url;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 
 /**
  * Class Redirect.
@@ -51,16 +59,42 @@ class Redirect extends ControllerBase {
   protected $parseModeManager;
 
   /**
+   * The access manager.
+   *
+   * @var \Drupal\Core\Access\AccessManagerInterface
+   */
+  protected AccessManagerInterface $accessManager;
+
+  /**
+   * @var \Symfony\Component\Routing\Matcher\UrlMatcherInterface
+   */
+  private UrlMatcherInterface $accessUnawareRouter;
+
+  /**
+   * The redirect destination service.
+   *
+   * @var \Drupal\Core\Routing\RedirectDestinationInterface
+   */
+  protected $redirectDestination;
+
+
+  /**
    * Constructs a new WebhookController object.
    */
-  public function __construct(ConfigFactoryInterface $config_factory, EntityTypeManagerInterface $entitytype_manager,
-    ParseModePluginManager $parse_mode_manager, RouteMatchInterface $route_match) {
+  public function __construct(ConfigFactoryInterface $config_factory,
+    EntityTypeManagerInterface $entitytype_manager,
+    ParseModePluginManager $parse_mode_manager,
+    RouteMatchInterface $route_match,
+    AccessManagerInterface $access_manager,
+    RedirectDestinationInterface $redirect_destination,
+    UrlMatcherInterface $access_unaware_router) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entitytype_manager;
     $this->parseModeManager = $parse_mode_manager;
     $this->routeMatch = $route_match;
-
-
+    $this->accessManager = $access_manager;
+    $this->redirectDestination = $redirect_destination;
+    $this->accessUnawareRouter = $access_unaware_router;
   }
 
   /**
@@ -72,6 +106,9 @@ class Redirect extends ControllerBase {
       $container->get('entity_type.manager'),
       $container->get('plugin.manager.search_api.parse_mode'),
       $container->get('current_route_match'),
+      $container->get('access_manager'),
+      $container->get('redirect.destination'),
+      $container->get('router.no_access_checks')
     );
   }
 
@@ -242,16 +279,14 @@ class Redirect extends ControllerBase {
 
 
   /**
-   * Makes a subrequest to retrieve the custom error page.
+   * Makes a sub request to retrieve a custom error page.
    *
    * @param \Symfony\Component\HttpKernel\Event\ExceptionEvent $event
    *   The event to process.
    * @param string $custom_path
-   *   The custom path to which to make a subrequest for this error message.
-   * @param int $status_code
-   *   The status code for the error being handled.
+   *   The custom path to which to make a sub request for this error message.
    */
-  protected function makeSubrequestToCustom404(ExceptionEvent $event, $custom_path) {
+  protected function makeSubrequestToCustom404(ExceptionEvent $event, string $custom_path): void {
     $url = Url::fromUserInput($custom_path);
     if ($url->isRouted()) {
       $access_result = $this->accessManager->checkNamedRoute($url->getRouteName(), $url->getRouteParameters(), NULL, TRUE);
@@ -272,6 +307,64 @@ class Redirect extends ControllerBase {
       }
     }
 
-    $this->makeSubrequest($event, $custom_path, Response::HTTP_NOT_FOUND);
+    $request = $event->getRequest();
+    $exception = $event->getThrowable();
+
+    try {
+      // Reuse the exact same request (so keep the same URL, keep the access
+      // result, the exception, et cetera) but override the routing information.
+      // This means that aside from routing, this is identical to the master
+      // request. This allows us to generate a response that is executed on
+      // behalf of the master request, i.e. for the original URL. This is what
+      // allows us to e.g. generate a 404 response for the original URL; if we
+      // would execute a subrequest with the 404 route's URL, then it'd be
+      // generated for *that* URL, not the *original* URL.
+      $sub_request = clone $request;
+
+      // The routing to the 404 page should be done as GET request because it is
+      // restricted to GET and POST requests only. Otherwise, a DELETE request
+      // would for example trigger a method not allowed exception.
+      $request_context = clone ($this->accessUnawareRouter->getContext());
+      $request_context->setMethod('GET');
+      $this->accessUnawareRouter->setContext($request_context);
+
+      $sub_request->attributes->add($this->accessUnawareRouter->match($url));
+
+      // Add to query (GET) or request (POST) parameters:
+      // - 'destination' (to ensure e.g. the login form in a 403 response
+      //   redirects to the original URL)
+      // - '_exception_statuscode'
+      $parameters = $sub_request->isMethod('GET') ? $sub_request->query : $sub_request->request;
+      $parameters->add($this->redirectDestination->getAsArray() + ['_exception_statuscode' => Response::HTTP_NOT_FOUND]);
+
+      $response = $this->httpKernel->handle($sub_request, HttpKernelInterface::SUB_REQUEST);
+      // Only 2xx responses should have their status code overridden; any
+      // other status code should be passed on: redirects (3xx), error (5xx)…
+      // @see https://www.drupal.org/node/2603788#comment-10504916
+      if ($response->isSuccessful()) {
+        $response->setStatusCode(Response::HTTP_NOT_FOUND);
+      }
+
+      // Persist the exception's cacheability metadata, if any. If the exception
+      // itself isn't cacheable, then this will make the response uncacheable:
+      // max-age=0 will be set.
+      if ($response instanceof CacheableResponseInterface) {
+        $response->addCacheableDependency($exception);
+      }
+
+      // Persist any special HTTP headers that were set on the exception.
+      if ($exception instanceof HttpExceptionInterface) {
+        $response->headers->add($exception->getHeaders());
+      }
+
+      $event->setResponse($response);
+    }
+    catch (\Exception $e) {
+      // If an error happened in the subrequest we can't do much else. Instead,
+      // just log it. The DefaultExceptionSubscriber will catch the original
+      // exception and handle it normally.
+      $error = Error::decodeException($e);
+      $this->getLogger('fragaria')->log($error['severity_level'], Error::DEFAULT_ERROR_MESSAGE, $error);
+    }
   }
 }

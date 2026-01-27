@@ -68,8 +68,6 @@ class FragariaRedirectRoutingService {
     foreach ($entities as $entity) {
       if ($entity->isActive()) {
         $prefixes = $entity->getPathPrefixes();
-        $prefixes = array_map(function($prefix) { if (is_string($prefix)) { return trim(trim($prefix), '/');} else {return NULL;}}, $prefixes);
-        $prefixes = array_filter($prefixes);
         $fragaria_routes = new \WeakMap();
         if ($entity->isDoReplacement()) {
           foreach ($prefixes as $prefix) {

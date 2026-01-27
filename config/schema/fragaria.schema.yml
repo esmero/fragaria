@@ -34,8 +34,11 @@ fragaria.fragariaredirect_entity.*:
   label: 'Fragaria Redirect Config Entity'
   mapping:
     uuid:
-    langcode: en
-    status: true
+      type: string
+    langcode:
+      type: string
+    status:
+      type: boolean
     id:
       type: string
       label: 'ID'

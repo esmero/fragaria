@@ -246,7 +246,8 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @return string
    */
   public function getPathPrefixes(): array {
-    return $this->path_prefixes;
+    $prefixes = array_map(function($prefix) { if (is_string($prefix)) { return trim(trim($prefix), '/');} else {return NULL;}}, $this->path_prefixes);
+    return array_filter($prefixes);;
   }
 
   /**
@@ -276,6 +277,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   public function setPathSuffixes(array $path_suffixes): void {
     $this->path_suffixes = $path_suffixes;
   }
+
+  /**
+   * @param array $path_prefixes
+   */
+  public function setPathPrefixes(array $path_prefixes): void {
+    $this->path_prefixes = $path_prefixes;
+  }
+
 
   /**
    * Checks if this Config is active.

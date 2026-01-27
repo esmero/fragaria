@@ -99,22 +99,33 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
    */
   private function getDemoUrlForItem(FragariaRedirectConfigEntity $entity, string $value) {
     $url = NULL;
-    try {
-      $url = \Drupal::urlGenerator()
-        ->generateFromRoute(
-          'fragaria_redirect.' . $entity->id(),
-          [
-            'key' => $value,
-          ]
-        );
+    $prefixes = $entity->getPathPrefixes();
+    if (is_array($prefixes) && !empty($prefixes)) {
+      $prefix = reset($prefixes);
+      $name = 'fragaria_redirect.' . md5($prefix) .'-'. $entity->id();
+      try {
+        $url = \Drupal::urlGenerator()
+          ->generateFromRoute(
+            $name,
+            [
+              'key' => $value,
+            ]
+          );
+      }
+      catch (\Exception $e) {
+        $this->messenger()
+          ->addError('We could not generate an example URL for the Fragaria Redirect Entity @label', [
+            '@label' => $entity->label(),
+          ]);
+      }
+      return $url;
     }
-    catch (\Exception $e) {
-      $this->messenger()->addError('We could not generate an example URL for the Fragaria Redirect Entity @label',[
-        '@label' => $entity->label(),
-      ]);
+    else {
+      $this->messenger()
+        ->addError('We could not generate an example URL for the Fragaria Redirect Entity @label bc you have no prefixes. Please edit and correct.', [
+          '@label' => $entity->label(),
+        ]);
     }
-
-    return $url;
   }
 
   /**
