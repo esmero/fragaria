@@ -94,3 +94,6 @@ fragaria.fragariaredirect_entity.*:
     custom_404:
       type: string
       label: 'A valid relative path for 404 responses. Leave empty for the default'
+    allow_empty_variable:
+      type: boolean
+      label: 'If the Route Path (without suffixes) allows to be called without the variable part'

@@ -151,6 +151,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#description' => $this->t('Enter one per line. Danger: using built in route prefixes (e.g node, admin, ajax) might break your site. Be careful!'),
         '#required' => TRUE,
         '#default_value' => $prefixes,
+        '#resizable' => 'vertical',
       ],
       'path_suffixes_element' => [
         '#type' => 'textarea',
@@ -158,10 +159,11 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => FALSE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? implode(PHP_EOL, $fragariaredirect_config->getPathSuffixes()): NULL,
         '#description' => $this->t('Enter one by line. This configuration option is not required.'),
-      ],
+        '#resizable' => 'vertical',
+        ],
       'variable_path_suffix' => [
         '#type' => 'checkbox',
-        '#title' => $this->t('Instead of fixed Prefixes add a single {catch_all} variable suffix at the end'),
+        '#title' => $this->t('Instead of fixed Suffixes, this adds a single {catch_all} variable suffix at the end'),
         '#required' => FALSE,
         '#return_value' => TRUE,
         '#default_value' => (!$fragariaredirect_config->isNew()) ? $fragariaredirect_config->getVariablePathSuffix(): FALSE,
@@ -235,6 +237,12 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
         '#required' => FALSE,
         '#field_prefix' => $this->requestContext->getCompleteBaseUrl(),
       ],
+      'allow_empty_variable' => [
+        '#type' => 'checkbox',
+        '#title' => $this->t('If this route can also serve (for the un-suffixed version) requests without the {variable} part.'),
+        '#return_value' => TRUE,
+        '#default_value' => ($fragariaredirect_config->isNew()) ? TRUE : (bool) $fragariaredirect_config->getAllowEmptyVariable()
+      ],
       'active' => [
         '#type' => 'checkbox',
         '#title' => $this->t('Is this Fragaria Redirect Route active?'),
@@ -288,6 +296,7 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     $this->entity = $this->buildEntity($form, $form_state);
     $this->entity->setPathPrefixes($prefixes);
     $this->entity->setDoReplacement($form_state->getValue('do_replacement') ? TRUE : FALSE);
+    $this->entity->setAllowEmptyVariable($form_state->getValue('allow_empty_variable') ? TRUE : FALSE);
     $this->entity->setPathSuffixes(is_array($suffixes) ? $suffixes : []);
     $this->entity->setSearchApiFieldValueSuffixes(is_array($search_api_field_value_suffixes) ? $search_api_field_value_suffixes : []);
     $this->entity->setSearchApiFieldValuePrefixes(is_array($search_api_field_value_prefixes) ? $search_api_field_value_prefixes : []);

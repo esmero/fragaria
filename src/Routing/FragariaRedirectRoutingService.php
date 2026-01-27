@@ -103,6 +103,9 @@ class FragariaRedirectRoutingService {
             );
             $name = 'fragaria_redirect.' . md5($prefix) .'-'. $entity->id();
             $route->setDefault('fragariaredirect_entity', $entity->id());
+            if ($entity->getAllowEmptyVariable()) {
+              $route->setDefault('key', '');
+            }
             $fragaria_routes[$route] = $name;
             $route_collection->add($name, $route);
           }
@@ -119,6 +122,8 @@ class FragariaRedirectRoutingService {
                 'Drupal\fragaria\Controller\Redirect::redirect_processor_variable'
               );
               $route_variable->setDefault('catch_all', '');
+              // Because of the catch call {key} can't have a default
+              $route_variable->setDefault('key', NULL);
               $route_collection->add(
                 $name. '.variable',
                 $route_variable
@@ -132,6 +137,8 @@ class FragariaRedirectRoutingService {
                 $suffix = trim(trim($suffix), '/');
                 $route_suffix = clone $local_route;
                 $route_suffix->setPath($route_suffix->getPath() . '/' . $suffix);
+                // Because of the Fixed Suffix {key} can't also have a default
+                $route_suffix->setDefault('key', NULL);
                 $route_collection->add(
                   $name . '.' . $key, $route_suffix
                 );

@@ -77,9 +77,17 @@ class Redirect extends ControllerBase {
    */
   protected $redirectDestination;
 
+  /**
+   * The HTTP kernel.
+   *
+   * @var \Symfony\Component\HttpKernel\HttpKernelInterface
+   */
+  protected $httpKernel;
+
+
 
   /**
-   * Constructs a new WebhookController object.
+   * Constructs the redirect Controller object.
    */
   public function __construct(ConfigFactoryInterface $config_factory,
     EntityTypeManagerInterface $entitytype_manager,
@@ -87,7 +95,8 @@ class Redirect extends ControllerBase {
     RouteMatchInterface $route_match,
     AccessManagerInterface $access_manager,
     RedirectDestinationInterface $redirect_destination,
-    UrlMatcherInterface $access_unaware_router) {
+    UrlMatcherInterface $access_unaware_router,
+    HttpKernelInterface $http_kernel) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entitytype_manager;
     $this->parseModeManager = $parse_mode_manager;
@@ -95,6 +104,7 @@ class Redirect extends ControllerBase {
     $this->accessManager = $access_manager;
     $this->redirectDestination = $redirect_destination;
     $this->accessUnawareRouter = $access_unaware_router;
+    $this->httpKernel = $http_kernel;
   }
 
   /**
@@ -108,7 +118,8 @@ class Redirect extends ControllerBase {
       $container->get('current_route_match'),
       $container->get('access_manager'),
       $container->get('redirect.destination'),
-      $container->get('router.no_access_checks')
+      $container->get('router.no_access_checks'),
+      $container->get('http_kernel')
     );
   }
 
@@ -131,7 +142,12 @@ class Redirect extends ControllerBase {
         return $response;
       }
       else {
-        throw new NotFoundHttpException();
+        if ($url404 = $entity->getCustom404()) {
+          return $this->makeSubrequestToCustom404($request, $url404);
+        }
+        else {
+          throw new NotFoundHttpException();
+        }
       }
     }
     else {
@@ -204,25 +220,8 @@ class Redirect extends ControllerBase {
       ->getStorage('search_api_index')
       ->load($entity->getSearchApiIndex());
 
-    $decomposed_path =  array_filter(explode("/", $path));
-    $decomposed_static_prefix = '/';
-    $decomposed_static_suffix = '/';
-    $found_key = false;
-    foreach ($decomposed_path as $segment) {
-        if ($found_key) {
-          $decomposed_static_suffix = $decomposed_static_suffix . $segment . '/';
-        }
-        else {
-          if ($segment == "{key}") {
-            $found_key = TRUE;
-          }
-          else {
-            $decomposed_static_prefix = $decomposed_static_prefix . $segment . '/';
-          }
-        }
-    }
-
     $value = NULL;
+    $value_with_prefixes = [];
     if ($index) {
       $query = $index->query();
       $query->range(0, 1);
@@ -236,24 +235,53 @@ class Redirect extends ControllerBase {
       if (empty($segments_in_pattern)) {
         $segments_in_pattern = ['variable'];
       }
-      if (in_array('variable', $segments_in_pattern)) {
-        $value_with_prefixes = [$key];
-        if ($entity->getSearchApiFieldValuePrefixes()) {
-          foreach ($entity->getSearchApiFieldValuePrefixes() as $prefix) {
-            $value_with_prefixes[] = $prefix . $key;
+
+      // Now for the extra prefix part.
+      if (in_array('suffixes', $segments_in_pattern) || in_array('prefixes', $segments_in_pattern)) {
+        $decomposed_path =  array_filter(explode("/", $path));
+        $decomposed_static_prefix = '';
+        $decomposed_static_suffix = '';
+        $found_key = false;
+        foreach ($decomposed_path as $segment) {
+          if ($found_key) {
+            $decomposed_static_suffix = $decomposed_static_suffix . $segment . '/';
           }
-        }
-        if ($entity->getSearchApiFieldValueSuffixes()) {
-          foreach ($entity->getSearchApiFieldValueSuffixes() as $suffix) {
-            foreach ($value_with_prefixes as $prefixed) {
-              $value_with_prefixes[] = $prefixed . $suffix;
+          else {
+            if ($segment == "{key}") {
+              $found_key = TRUE;
+            }
+            else {
+              $decomposed_static_prefix = $decomposed_static_prefix . $segment . '/';
             }
           }
         }
       }
-      // Now for the extra prefix part.
+      // A this stage we will have a single ONE
+      // Since prefixes and suffixes are coming from the actual URL
+      // And not the many settings.
       if (in_array('prefixes', $segments_in_pattern)) {
-        foreach ($value_with_prefixes as $prefixed) {
+        $value_with_prefixes[] = $decomposed_static_prefix ;
+      }
+      if (in_array('variable', $segments_in_pattern)) {
+        $value_with_prefixes[0] = isset($value_with_prefixes[0]) ? $value_with_prefixes[0] = $value_with_prefixes[0].$key : [$key];
+      }
+      if (in_array('suffixes', $segments_in_pattern)) {
+        $value_with_prefixes[0] = isset($value_with_prefixes[0]) ? $value_with_prefixes[0] = $value_with_prefixes[0]. $decomposed_static_suffix : [$decomposed_static_suffix];
+      }
+      // This will also hold the original pre-prefixed one
+      if ($entity->getSearchApiFieldValuePrefixes()) {
+        foreach ($entity->getSearchApiFieldValuePrefixes() as $prefix) {
+          foreach ($value_with_prefixes as $prefixed) {
+            $value_with_prefixes[] = $prefix . $prefixed;
+          }
+        }
+      }
+      // This will also hold the original + prefixed ones
+      if ($entity->getSearchApiFieldValueSuffixes()) {
+        foreach ($entity->getSearchApiFieldValueSuffixes() as $suffix) {
+          foreach ($value_with_prefixes as $prefixed) {
+            $value_with_prefixes[] = $prefixed . $suffix;
+          }
         }
       }
 
@@ -281,16 +309,15 @@ class Redirect extends ControllerBase {
   /**
    * Makes a sub request to retrieve a custom error page.
    *
-   * @param \Symfony\Component\HttpKernel\Event\ExceptionEvent $event
+   * @param Request $request
    *   The event to process.
    * @param string $custom_path
    *   The custom path to which to make a sub request for this error message.
    */
-  protected function makeSubrequestToCustom404(ExceptionEvent $event, string $custom_path): void {
+  protected function makeSubrequestToCustom404(Request $request, string $custom_path) {
     $url = Url::fromUserInput($custom_path);
     if ($url->isRouted()) {
       $access_result = $this->accessManager->checkNamedRoute($url->getRouteName(), $url->getRouteParameters(), NULL, TRUE);
-      $request = $event->getRequest();
       if (!$request->attributes->has(AccessAwareRouterInterface::ACCESS_RESULT)) {
         $request->attributes->set(AccessAwareRouterInterface::ACCESS_RESULT, $access_result);
       }
@@ -306,9 +333,7 @@ class Redirect extends ControllerBase {
         return;
       }
     }
-
-    $request = $event->getRequest();
-    $exception = $event->getThrowable();
+    $exception = new NotFoundHttpException();
 
     try {
       // Reuse the exact same request (so keep the same URL, keep the access
@@ -328,7 +353,7 @@ class Redirect extends ControllerBase {
       $request_context->setMethod('GET');
       $this->accessUnawareRouter->setContext($request_context);
 
-      $sub_request->attributes->add($this->accessUnawareRouter->match($url));
+      $sub_request->attributes->add($this->accessUnawareRouter->match($url->toString()));
 
       // Add to query (GET) or request (POST) parameters:
       // - 'destination' (to ensure e.g. the login form in a 403 response
@@ -357,7 +382,7 @@ class Redirect extends ControllerBase {
         $response->headers->add($exception->getHeaders());
       }
 
-      $event->setResponse($response);
+      return $response;
     }
     catch (\Exception $e) {
       // If an error happened in the subrequest we can't do much else. Instead,
@@ -365,6 +390,7 @@ class Redirect extends ControllerBase {
       // exception and handle it normally.
       $error = Error::decodeException($e);
       $this->getLogger('fragaria')->log($error['severity_level'], Error::DEFAULT_ERROR_MESSAGE, $error);
+      throw $exception;
     }
   }
 }

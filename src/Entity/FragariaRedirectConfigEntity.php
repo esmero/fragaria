@@ -52,6 +52,7 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "active",
  *     "do_replacement",
  *     "custom_404",
+ *     "allow_empty_variable",
  *   },
  *   links = {
  *     "edit-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit",
@@ -130,6 +131,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var bool
    */
   public bool $variable_path_suffix = FALSE;
+
+  /**
+   * If this Route can serve requests without the {key} part.
+   *  Only Applies for the unsuffixed versions of the route.
+   *
+   * @var bool
+   */
+  public bool $allow_empty_variable = FALSE;
 
   /**
    * The Search API Index ID of the field.
@@ -368,6 +377,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
 
   public function getCustom404(): ?string {
     return $this->custom_404;
+  }
+
+  public function getAllowEmptyVariable(): bool {
+    return $this->allow_empty_variable;
+  }
+
+  public function setAllowEmptyVariable(bool $allow_empty_variable): void {
+    $this->allow_empty_variable = $allow_empty_variable;
   }
 
 }
