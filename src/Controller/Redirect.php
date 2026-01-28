@@ -264,6 +264,10 @@ class Redirect extends ControllerBase {
       }
       if (in_array('variable', $segments_in_pattern)) {
         $value_with_prefixes[0] = isset($value_with_prefixes[0]) ? $value_with_prefixes[0] = $value_with_prefixes[0].$key : [$key];
+        // We are parsing the variable part but it is empty, remove the last "/"
+        if ($key == "") {
+          $value_with_prefixes[0] = rtrim($value_with_prefixes[0],"/");
+        }
       }
       if (in_array('suffixes', $segments_in_pattern)) {
         $value_with_prefixes[0] = isset($value_with_prefixes[0]) ? $value_with_prefixes[0] = $value_with_prefixes[0]. $decomposed_static_suffix : [$decomposed_static_suffix];
