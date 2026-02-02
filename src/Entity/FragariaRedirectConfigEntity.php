@@ -294,7 +294,6 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
     $this->path_prefixes = $path_prefixes;
   }
 
-
   /**
    * Checks if this Config is active.
    *
@@ -387,4 +386,16 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
     $this->allow_empty_variable = $allow_empty_variable;
   }
 
+  public function isSafeRouteString(string $routeAsString):bool {
+      $matches = [];
+      // We are allowing Slashes here but no dots
+      $matched = preg_match('/[^a-zA-Z0-9\/\-_~]/m', $routeAsString, $matches);
+      if ($matched === 0) {
+          return TRUE;
+      }
+      else {
+          return FALSE;
+      }
+  }
+  
 }
