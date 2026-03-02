@@ -108,7 +108,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'DataCite/Fabrica Repository User'
       ),
       '#description'   => $this->t(
-        'Please provide your Institution\'s DataCite/Fabrica Repository User. Normally in the form of "xxx.xxx"'
+        'Please provide your Institution\'s DataCite/Fabrica Repository User. Normally in the form of "xxx.xxx". Setting it to empty will also clear the corresponding password.'
       ),
       '#default_value' => $config->get('repository_fabrica_user') ?? '',
       '#required' => FALSE
@@ -132,7 +132,7 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
         'DataCite/Fabrica Repository Test User'
       ),
       '#description'   => $this->t(
-        'Please provide your Institution\'s DataCite/Fabrica Test Repository User. Normally in the form of "xxx.xxx"'
+        'Please provide your Institution\'s DataCite/Fabrica Test Repository User. Normally in the form of "xxx.xxx". Setting it to empty will also clear the corresponding password.'
       ),
       '#default_value' => $config->get('repository_fabrica_user_test') ?? '',
       '#required' => FALSE
@@ -237,22 +237,49 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       ->set(
         'processor_entity_id', $form_state->getValue('processor_entity_id')
       );
-
-    if ($form_state->getValue('repository_fabrica_user_test') && $form_state->getValue('repository_fabrica_password_test')) {
+    $test_user = $form_state->getValue('repository_fabrica_user_test');
+    if (is_string($test_user)) {
+      $test_user = trim($test_user);
+      $test_user = strlen($test_user) > 0 ? $test_user : NULL;
+    }
+    if ($test_user && $form_state->getValue('repository_fabrica_password_test')) {
       $config->set(
-        'repository_fabrica_user_test', trim($form_state->getValue('repository_fabrica_user_test') ?? ' ')
+        'repository_fabrica_user_test', $test_user
       )
         ->set(
           'repository_fabrica_password_test', trim($form_state->getValue('repository_fabrica_password_test') ?? ' ')
         );
     }
+    if ($test_user == NULL) {
+      $config->clear(
+        'repository_fabrica_user_test'
+      )
+        ->clear(
+          'repository_fabrica_password_test'
+        );
+    }
 
-    if ($form_state->getValue('repository_fabrica_user') && $form_state->getValue('repository_fabrica_password')) {
+    $prod_user = $form_state->getValue('repository_fabrica_user');
+    if (is_string($prod_user)) {
+      $prod_user = trim($prod_user);
+      $prod_user = strlen($prod_user) > 0 ? $prod_user : NULL;
+    }
+
+    if ($prod_user && $form_state->getValue('repository_fabrica_password')) {
       $config->set(
-        'repository_fabrica_user', trim($form_state->getValue('repository_fabrica_user') ?? ' ')
+        'repository_fabrica_user', $prod_user
       )
         ->set(
           'repository_fabrica_password', trim($form_state->getValue('repository_fabrica_password') ?? ' ')
+        );
+    }
+
+    if ($prod_user == NULL) {
+      $config->clear(
+        'repository_fabrica_user'
+      )
+        ->clear(
+          'repository_fabrica_password'
         );
     }
 
