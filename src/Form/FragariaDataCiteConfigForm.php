@@ -186,6 +186,13 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       '#default_value' =>  $template,
       '#maxlength' => 300,
     ];
+    $form['ignore_entity_status'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow non published ADOs to trigger DOI publish(findable)/register(registered) events(statuses) against the DataCite API.'),
+      '#description' => $this->t('Warning! Enabling this allows you to Mint public facing DOIs on ADOs that might not be publicly visible (yet). DataCite requires any findable/registered DOI to point to a public facing URL/ADO. Only enable if you are sure the final state of your ADO (e.g ingested via an AMI set) is going to be "published", or manually publish ASAP after minting. Once enabled it is your responsibility!'),
+      '#default_value' => (bool) $config->get(
+          'ignore_entity_status') ?? FALSE
+    ];
 
     return parent::buildForm($form, $form_state);
   }
@@ -236,6 +243,9 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
       )
       ->set(
         'processor_entity_id', $form_state->getValue('processor_entity_id')
+      )
+      ->set(
+       'ignore_entity_status', $form_state->getValue('ignore_entity_status') ? TRUE : FALSE
       );
     $test_user = $form_state->getValue('repository_fabrica_user_test');
     if (is_string($test_user)) {

@@ -29,3 +29,6 @@ fragaria.datacite:
     processor_entity_id:
       type: string
       label: "Uuid of the Metadata Display used to Cast DataCite valid metadata"
+    ignore_entity_status:
+      type: boolean
+      label: 'If true, entity status for public facing DOIs will not be enforced. Never enabled if you can not take responsability of publishing.'
