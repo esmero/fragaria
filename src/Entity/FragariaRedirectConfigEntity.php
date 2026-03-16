@@ -82,7 +82,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    *
    * @var string
    */
-  public string $path_prefix;
+  public ?string $path_prefix = NULL;
 
   /**
    * Additional Prefixes this route will respond to
@@ -228,7 +228,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @return string
    */
   public function getPathPrefix(): string {
-    return $this->path_prefix;
+    return $this->path_prefix ?? '';
   }
 
   /**
