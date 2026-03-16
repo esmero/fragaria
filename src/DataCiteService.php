@@ -49,7 +49,7 @@ class DataCiteService {
    *
    */
   public const DATACITE_FRAGARIA_VALID_EVENTS = ['draft','register','publish', 'delete'];
-  public const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error'];
+  public const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error', NULL];
 
   /**
    * The entity manager service.
@@ -130,6 +130,10 @@ class DataCiteService {
 
   public function isActive(): bool {
     return (bool) $this->config->get('active') ?? FALSE;
+  }
+
+  public function ignoreEntityStatus(): bool {
+    return (bool) $this->config->get('ignore_entity_status') ?? FALSE;
   }
 
   /**
@@ -357,12 +361,23 @@ class DataCiteService {
       // If data needs to be updated re-set $fullvalues and set the field again.
       $api = $this->getActiveAPI();
       $datacite_trigger = $fullvalues['ap:tasks']['ap:fragaria'][$api] ?? NULL;
+      // Clean the trigger and the previous value if they are arrays.
+      if (is_array($datacite_trigger)) {
+        $datacite_trigger = array_filter($datacite_trigger);
+      }
+      if (is_array($previous_data_cite_value)) {
+        $previous_data_cite_value = array_filter($previous_data_cite_value);
+      }
+
       $workflow_status = [];
       $entity_status = TRUE;
       if ($entity->getEntityType()->isRevisionable() && !$entity->isLatestRevision()) {
         $entity_status = FALSE;
       }
       $entity_status =  $entity_status && $entity->isPublished();
+      // New. Allows published and registered to be called even if entity NOT yet published.
+      // But generates a LOG for the user.
+      $ignore_entity_status = $this->ignoreEntityStatus();
       // Before calling anything
       if ($datacite_trigger == NULL && $previous_data_cite_value == NULL) {
         // Nothing to do here, nobody is requesting anything or APIs don't match
@@ -386,12 +401,15 @@ class DataCiteService {
       // the status of that event was "error". We don't preserve the Last Event request, only the final status.
       $ap_task_passed_array = $this->validateApTask($datacite_trigger);
       $previous_ap_task_passed_array = $this->validateApTask($previous_data_cite_value);
+      // In case nothing evaluates. Leave the previous mess
+      $ap_task_parsed_data = $previous_ap_task_passed_array ?? [];
+
       // @TODO. Make this very long chunk of nested if/else reusable method and simpler.
       // If both states are valid. Now check possible transitions
 
       // Edge case. A Revision/error provides invalid previous_ap_task_passed array
       // But the current one is valid and has a DOI. If so, we can not relay on the previous state of the DOI
-      // But we can force a remote fetch and make it valid afterwards.
+      // But we can force a remote fetch and make it valid afterward.
       // For this we need to make sure that is evaluated before
       if (($ap_task_passed_array['valid']  && !$previous_ap_task_passed_array['valid']) && ($ap_task_passed_array['doi'] ?? FALSE)) {
         // here we will use the DataCite API to fetch the Current Status since we can't depend on previous statuses
@@ -420,8 +438,8 @@ class DataCiteService {
         // Remove the data.
         $ap_task_parsed_data = [];
       }
-
-
+      // An status == null without a DOI is valid, and could be result of a failed op in the past.
+      // And we should not report on it.
       if (($ap_task_passed_array['valid'] == $previous_ap_task_passed_array['valid']) && $ap_task_passed_array['valid']) {
         // Pre-set this. Worst case scenario we will return the same data.
         $ap_task_parsed_data = $ap_task_passed_array;
@@ -433,12 +451,12 @@ class DataCiteService {
             $calls[] = ['api' => 'create', 'event' => NULL];
             // call API with empty event. NO DOI passed neither
           }
-          elseif ($ap_task_passed_array['event'] == 'register' && $entity_status) {
+          elseif ($ap_task_passed_array['event'] == 'register' && ($entity_status || $ignore_entity_status)) {
             $calls[] = ['api' => 'create', 'event' => NULL];
             $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => NULL];
             // This requires two calls. First create a Draft. Once Drafted. Request a status update to registered.
           }
-          elseif ($ap_task_passed_array['event'] == 'publish' && $entity_status) {
+          elseif ($ap_task_passed_array['event'] == 'publish' && ($entity_status || $ignore_entity_status)) {
             $calls[] = ['api' => 'create', 'event' => 'publish'];
             // call API with publish event.
           }
@@ -548,21 +566,21 @@ class DataCiteService {
               // Nothing to do other than Updating metadata. No need to pass an event here.
               $calls[] = ['api' => 'update', 'event' => NULL, 'doi' => $ap_task_passed_array['doi']];
             }
-            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "draft" && ($entity_status || $ignore_entity_status)) {
               // This requires an UPDATE status call.
               $calls[] = ['api' => 'update', 'event' => 'register', 'doi' => $ap_task_passed_array['doi']];
             }
-            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "draft" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "draft" && ($entity_status || $ignore_entity_status)) {
 
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call.
             }
-            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "registered" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "publish" && $previous_ap_task_passed_array['status'] == "registered" && ($entity_status || $ignore_entity_status)) {
 
               $calls[] = ['api' => 'update', 'event' => 'publish', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call.
             }
-            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "findable" && $entity_status) {
+            elseif ($ap_task_passed_array['event'] == "register" && $previous_ap_task_passed_array['status'] == "findable" && ($entity_status || $ignore_entity_status)) {
 
               $calls[] = ['api' => 'update', 'event' => 'hide', 'doi' => $ap_task_passed_array['doi']];
               // This requires an UPDATE status call to "hide" it.
@@ -586,7 +604,7 @@ class DataCiteService {
                 ]);
               $workflow_status['error'][] = $message;
               // What is else here?
-              if (in_array($ap_task_passed_array['event'] ?? NULL, ["publish","register"]) && !$entity_status) {
+              if (in_array($ap_task_passed_array['event'] ?? NULL, ["publish","register"]) && !$entity_status && !$ignore_entity_status) {
                 $message = $this->t('You can not transition to @event for DOI @doi for ADO with UUID @uuid because only Published ADOs can have public DOIs.',
                   [
                     '@uuid' => $entity->uuid(),
@@ -606,7 +624,7 @@ class DataCiteService {
         $message = $this->t('Your API DataCite Task data is invalid but the previous one from a revision was Ok. Restoring for UUID @uuid, but no further action will be executed',
           [
             '@uuid' => $entity->uuid(),
-            '@doi' =>$previous_ap_task_passed_array['doi'],
+            '@doi' =>$previous_ap_task_passed_array['doi'] ?? 'no previous DOI',
           ]);
         $workflow_status['error'][] = $message;
       }
@@ -616,7 +634,7 @@ class DataCiteService {
         $message = $this->t('Your API DataCite Task data is invalid. Removing it from ADO with UUID @uuid',
           [
             '@uuid' => $entity->uuid(),
-            '@doi' =>$previous_ap_task_passed_array['doi'],
+            '@doi' =>$previous_ap_task_passed_array['doi'] ?? 'no previous DOI',
           ]);
         $workflow_status['error'][] = $message;
       }
@@ -716,6 +734,18 @@ class DataCiteService {
               }
             }
           }
+          // Give the user a late nugde about entity status, but only if we called the backend.
+          // And we got a proper DOI from the backend too.
+          // No need to alert the user about this if the API failed.
+          if ($doi && in_array($ap_task_passed_array['event'] ?? NULL, ["publish","register"]) && !$entity_status && $ignore_entity_status) {
+            $message = $this->t('You called event @event for DOI @doi, ADO with UUID @uuid on a not (yet) published ADO. We allowed it because you have "Ignore Entity Status" globally enabled in your DataCite Configuration. It is your responsability to ensure any public facing DOIs point to a published ADO.',
+              [
+                '@uuid' => $entity->uuid(),
+                '@doi' => $doi,
+                '@event' => $ap_task_passed_array['event'],
+              ]);
+            $workflow_status['warning'][] = $message;
+          }
         }
         else {
           $message = $this->t('DOI Updated failed for ADO with UUID @UUID because of invalid Metadata Display Output. Check your Twig syntax and DataCite V4 schema conformance.',
@@ -726,12 +756,20 @@ class DataCiteService {
           $ap_task_parsed_data['error'] = TRUE;
         }
       }
+
+
+
       $datacite_metadata = $this->generateApTask($ap_task_parsed_data);
       // Log all workflow Status
       foreach (($workflow_status['error'] ?? []) as $error_message) {
         $this->loggerFactory->get(static::LOGGER_NAME)->error($error_message);
         // Also log to main Drupal logger.
         $this->loggerFactory->get('fragaria')->error($error_message);
+      }
+      foreach (($workflow_status['warning'] ?? []) as $warning_message) {
+        $this->loggerFactory->get(static::LOGGER_NAME)->error($warning_message);
+        // Also log to main Drupal logger.
+        $this->loggerFactory->get('fragaria')->error($warning_message);
       }
 
       foreach (($workflow_status['info'] ?? []) as $info_message) {
@@ -849,6 +887,11 @@ class DataCiteService {
                 $current_status = NULL;
               }
             }
+          }
+          else {
+            // NO DOI and empty status, or status is NULL or not in the controlled vocab list
+            $current_status = NULL;
+            $valid  = TRUE;
           }
         }
       }
