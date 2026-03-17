@@ -54,6 +54,9 @@ class TwigExtension extends AbstractExtension {
       $api = $this->dataCiteService->getActiveAPI();
       if ($original_data['ap:tasks']['ap:fragaria'][$api] ?? NULL) {
         $datacite_value['ap:tasks']['ap:fragaria'][$api] = $original_data['ap:tasks']['ap:fragaria'][$api] ?? NULL;
+        if (is_array( $datacite_value['ap:tasks']['ap:fragaria'][$api])) {
+          $datacite_value['ap:tasks']['ap:fragaria'][$api] = array_filter($datacite_value['ap:tasks']['ap:fragaria'][$api]);
+        }
       }
       if (!empty($datacite_value)) {
         // Validate it
@@ -74,6 +77,13 @@ class TwigExtension extends AbstractExtension {
           }
           // Now our valid events after prunning. If no event we don't need to do anything here.
           if ($event && in_array($event, $valid_events)) {
+            $datacite_value['ap:tasks']['ap:fragaria'][$api]['event'] = $event;
+          }
+        }
+        elseif ($validated['valid'] && !$validated['status'] && !$validated['doi']) {
+          // Status and doi are empty but valid. Just a false "start"
+          if ($event && in_array($event, $valid_events)) {
+            $datacite_value['ap:tasks']['ap:fragaria'][$api] = [];
             $datacite_value['ap:tasks']['ap:fragaria'][$api]['event'] = $event;
           }
         }

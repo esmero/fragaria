@@ -23,10 +23,8 @@ class FragariaDataCiteReportForm extends FormBase {
    * @var
    */
   private CONST LOG_LEVELS = [
-    'all'       => 'All Levels (all time)',
-    'INFO'      => 'INFO ',
-    'WARNING'   => 'WARNING',
-    'ERROR'   => 'ERRORS',
+    'INFO'      => 'INFO',
+    'ERROR'   => 'ERROR',
   ];
 
   public function getFormId() {
@@ -70,9 +68,18 @@ class FragariaDataCiteReportForm extends FormBase {
 
     /* Fetch the status from the private store also: */
 
-    $num_per_page = 50;
-    $logfilename = "private://fragaria/logs/datacite.log";
-    $logfilename = $this->fileSystem->realpath($logfilename);
+    $num_per_page = 25;
+    $logfilename_error = "private://fragaria/logs/datacite.log";
+    $logfilename_info = "private://fragaria/logs/datacite_peppermint.log";
+    $level = $this->getRequest()->get('logs', 'ERROR');
+    $level = $form_state->getValue(['logs','level']) ?? $level;
+    $level =  in_array($level,array_keys(static::LOG_LEVELS)) ? $level : 'ERROR';
+    if ($level == "ERROR") {
+      $logfilename = $this->fileSystem->realpath($logfilename_error);
+    }
+    else {
+      $logfilename = $this->fileSystem->realpath($logfilename_info);
+    }
     if ($logfilename !== FALSE && file_exists($logfilename)) {
       clearstatcache(TRUE, $logfilename);
       // How many lines?
@@ -91,105 +98,16 @@ class FragariaDataCiteReportForm extends FormBase {
       // Won't override $total_lines because i still need this for the offset
       // Independently of the level selection.
       $total_lines_for_pager = $total_lines;
-      $level = $this->getRequest()->query->get('level', 'all');
-      $level = $form_state->getValue(['logs','level']) ?? $level;
-      $level =  in_array($level,array_keys(static::LOG_LEVELS)) ? $level : 'all';
       $total_lines_current = 0;
-      $prev_time_stamp = NULL;
-      $our_time_stamp = NULL;
-      $endcurrent = FALSE;
+
       $rows = [];
-
-      $timestamp_offset = $total_lines - 1 >= 0 ? $total_lines - 1 : 0;
-
-      while ($timestamp_offset >= 0 && !$endcurrent) {
-        $reader_end = new LimitIterator($file, $timestamp_offset, 1);
-        foreach ($reader_end as $line) {
-          $currentLineExpanded = json_decode($line, TRUE);
-          if (json_last_error() == JSON_ERROR_NONE) {
-            $our_time_stamp
-              = $currentLineExpanded['context']['time_submitted'] ?? NULL;
-          }
-          if ($our_time_stamp == NULL) {
-            $timestamp_offset--;
-          } else {
-            $endcurrent = TRUE;
-            break;
-          }
-        }
-      }
-
-      $endcurrent = FALSE;
-      // Find based on the level what we need.
-      $current_offset = ($total_lines - $num_per_page) >= 0 ? ($total_lines - $num_per_page) : 0;
-      // Means we will count only until current process records and filter
-      if ($level !== 'all' && $our_time_stamp !== NULL) {
-        while ($current_offset >= 0 && !$endcurrent) {
-          $reader = new LimitIterator($file, $current_offset, $num_per_page);
-          foreach ($reader as $line) {
-            $row = [];
-            $currentLineExpanded = json_decode($line, TRUE);
-            if (json_last_error() == JSON_ERROR_NONE) {
-              $current_time_stamp
-                = isset($currentLineExpanded['context']['time_submitted'])
-                ? $currentLineExpanded['context']['time_submitted']
-                : $prev_time_stamp;
-              // But we can not bail yet here! We are reading from older to newer so this could be a page (still) where the
-              // First records are not of this set but later on they are! Damn Diego
-              if ($prev_time_stamp != NULL
-                && ($our_time_stamp != $prev_time_stamp)
-              ) {
-                $endcurrent = TRUE;
-              }
-              if (isset($currentLineExpanded['level_name'])
-                && $currentLineExpanded['level_name'] == $level
-                && $our_time_stamp == $current_time_stamp
-              ) {
-                $total_lines_current++;
-                $row['datetime'] = $currentLineExpanded['datetime'];
-                $row['level'] = $currentLineExpanded['level_name'];
-                $row['message'] = $this->t($currentLineExpanded['message'], []);
-                $row['details'] = json_encode($currentLineExpanded['context']);
-                $rows[$reader->getPosition()] = $row;
-              }
-              $prev_time_stamp = $current_time_stamp;
-            }
-          }
-          $current_offset = $current_offset - $num_per_page;
-          $current_offset = $current_offset > 0 ? $current_offset : 0;
-          if ($current_offset == 0) {
-            $endcurrent = TRUE;
-          }
-        }
-        $total_lines_for_pager = $total_lines_current;
-        // resorts the array based on the actual timestamp with microseconds
-        ksort($rows, SORT_NUMERIC);
-        $slice_offset = ($page * $num_per_page <= $total_lines_current)
-          ? $total_lines_current - ($page * $num_per_page) : 0;
-        $slice_amount = ($page * $num_per_page <= $total_lines_current)
-          ? $num_per_page
-          : $total_lines_current - (($page - 1) * $num_per_page);
-        $rows = array_slice($rows, $slice_offset, $slice_amount);
-        $rows = array_reverse($rows);
-      }
-
-
-
-      $timestamp = $our_time_stamp;
-      $pager = \Drupal::service('pager.manager')->createPager(
-        $total_lines_for_pager, $num_per_page
-      );
-      /* @var $pager \Drupal\Core\Pager\Pager */
-      $page = $pager->getCurrentPage();
-
-      $page = $page + 1;
       $offset = $total_lines - ($num_per_page * $page);
       $num_per_page = $offset < 0 ? $num_per_page + $offset : $num_per_page;
       $offset = $offset < 0 ? 0 : $offset;
       $fetch = TRUE;
       // This only RUNS if all is selected.
       // ROWS have been already fetched for the other levels before.
-      while ($offset >= 0 && count($rows) < $num_per_page && $level == 'all') {
+      while ($offset >= 0 && count($rows) < $num_per_page) {
         $reader = new LimitIterator($file, $offset, $num_per_page);
         foreach ($reader as $line) {
           $currentLineExpanded = json_decode($line, TRUE);
@@ -214,14 +132,14 @@ class FragariaDataCiteReportForm extends FormBase {
       $file = NULL;
 
       $message = $this->t(
-          'You have @count entries for your current Filter',
-          [
-            '@count' => $total_lines_for_pager,
-            '@date'  => !empty($timestamp) ? date(
-              'D, d M Y \a\t H:i:s', $timestamp
-            ) : " Unknown ",
-          ]
-        );
+        'You have @count entries for your current Filter',
+        [
+          '@count' => $total_lines_for_pager,
+          '@date'  => !empty($timestamp) ? date(
+            'D, d M Y \a\t H:i:s', $timestamp
+          ) : " Unknown ",
+        ]
+      );
       $form['logs'] = [
         '#tree'   => TRUE,
         '#type'   => 'fieldset',
