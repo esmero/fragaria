@@ -39,7 +39,8 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "id",
  *     "label",
  *     "uuid",
- *     "path_prefix",
+ *     "path_prefixes",
+ *     "segments_in_pattern",
  *     "search_api_index",
  *     "search_api_field",
  *     "path_suffixes",
@@ -49,7 +50,9 @@ use Drupal\Core\DependencyInjection\DependencySerializationTrait;
  *     "redirect_http_code",
  *     "cache",
  *     "active",
- *     "do_replacement"
+ *     "do_replacement",
+ *     "custom_404",
+ *     "allow_empty_variable",
  *   },
  *   links = {
  *     "edit-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit",
@@ -68,7 +71,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var string
    */
 
-  protected $id;
+  protected string $id;
 
   /**
    * The human-readable name of the form or view mode.
@@ -78,11 +81,19 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   protected string $label;
 
   /**
-   * Prefix this route will respond to
+   * Prefixes this route will respond to
    *
-   * @var string
+   * @var array
    */
-  public ?string $path_prefix = NULL;
+  public array $path_prefixes = [];
+
+  /**
+   * What segments of the resolved URL to be used for the Search API pattern matching
+   *
+   * @var array
+   */
+  public array $segments_in_pattern = [];
+
 
   /**
    * Additional Prefixes this route will respond to
@@ -122,6 +133,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   public bool $variable_path_suffix = FALSE;
 
   /**
+   * If this Route can serve requests without the {key} part.
+   *  Only Applies for the unsuffixed versions of the route.
+   *
+   * @var bool
+   */
+  public bool $allow_empty_variable = FALSE;
+
+  /**
    * The Search API Index ID of the field.
    *
    * @var string
@@ -141,6 +160,14 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * @var string
    */
   protected $redirect_http_code = '303';
+
+
+  /**
+   * The Type of HTTP redirect Code to use
+   *
+   * @var ?string
+   */
+  protected ?string $custom_404 = NULL;
 
   /**
    * If the Config Entity is active or not.
@@ -227,8 +254,9 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
   /**
    * @return string
    */
-  public function getPathPrefix(): string {
-    return $this->path_prefix ?? '';
+  public function getPathPrefixes(): array {
+    $prefixes = array_map(function($prefix) { if (is_string($prefix)) { return trim(trim($prefix), '/');} else {return NULL;}}, $this->path_prefixes);
+    return array_filter($prefixes);;
   }
 
   /**
@@ -257,6 +285,13 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    */
   public function setPathSuffixes(array $path_suffixes): void {
     $this->path_suffixes = $path_suffixes;
+  }
+
+  /**
+   * @param array $path_prefixes
+   */
+  public function setPathPrefixes(array $path_prefixes): void {
+    $this->path_prefixes = $path_prefixes;
   }
 
   /**
@@ -331,5 +366,36 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
     $this->do_replacement = $do_replacement;
   }
 
+  public function getSegmentsInPattern(): array {
+    return $this->segments_in_pattern;
+  }
 
+  public function setSegmentsInPattern(array $segments_in_pattern): void {
+    $this->segments_in_pattern = $segments_in_pattern;
+  }
+
+  public function getCustom404(): ?string {
+    return $this->custom_404;
+  }
+
+  public function getAllowEmptyVariable(): bool {
+    return $this->allow_empty_variable;
+  }
+
+  public function setAllowEmptyVariable(bool $allow_empty_variable): void {
+    $this->allow_empty_variable = $allow_empty_variable;
+  }
+
+  public function isSafeRouteString(string $routeAsString):bool {
+      $matches = [];
+      // We are allowing Slashes here but no dots
+      $matched = preg_match('/[^a-zA-Z0-9\/\-_~]/m', $routeAsString, $matches);
+      if ($matched === 0) {
+          return TRUE;
+      }
+      else {
+          return FALSE;
+      }
+  }
+  
 }

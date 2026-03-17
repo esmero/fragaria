@@ -277,19 +277,10 @@ class FragariaDataCiteConfigForm extends ConfigFormBase {
 
     if ($prod_user && $form_state->getValue('repository_fabrica_password')) {
       $config->set(
-        'repository_fabrica_user', $prod_user
+        'repository_fabrica_user', trim($form_state->getValue('repository_fabrica_user') ?? ' ')
       )
         ->set(
           'repository_fabrica_password', trim($form_state->getValue('repository_fabrica_password') ?? ' ')
-        );
-    }
-
-    if ($prod_user == NULL) {
-      $config->clear(
-        'repository_fabrica_user'
-      )
-        ->clear(
-          'repository_fabrica_password'
         );
     }
 
