@@ -506,7 +506,7 @@ class DataCiteService {
               $message = $this->t('Wrong Data Cite DOI @doi. We could not verify the DOI status via a remote API call for ADO with UUID @uuid. Check your ap:task key values.',
                 [
                   '@uuid' => $entity->uuid(),
-                  '@doi' =>$previous_ap_task_passed_array['doi'],
+                  '@doi' => $previous_ap_task_passed_array['doi'],
                 ]);
               $workflow_status['error'][] = $message;
             }
