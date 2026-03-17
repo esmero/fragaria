@@ -461,13 +461,12 @@ class DataCiteService {
             // call API with publish event.
           }
           else {
-            $message = $this->t('Wrong Data Cite Event/ADO Status combination. We could not run your DOI workflow for ADO with UUID @uuid. Check your ap:task key values.',
+            $message = $this->t('Wrong Data Cite Event/ADO Status combination. We could not run your DOI workflow for ADO with UUID @uuid. Check your ap:task key values. Prestate was <em>@prestate</em>, requested state was <em>@desiredstate</em>',
               [
                 '@uuid' => $entity->uuid(),
+                '@prestate' => json_encode($previous_ap_task_passed_array) ?? 'Undefined',
+                '@desiredstate' => json_encode($ap_task_passed_array) ?? 'Undefined',
               ]);
-            error_log('entity status'.$entity_status);
-            error_log('desired_state'.json_encode($ap_task_passed_array));
-            error_log('previous_state'.json_encode($previous_ap_task_passed_array));
             $workflow_status['error'][] = $message;
             // IF entity status is not published we can not run Publish or register.
             // What is else under NO DOI? Wrong combo of operations?
