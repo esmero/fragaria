@@ -604,9 +604,6 @@ class DataCiteService {
                   '@uuid' => $entity->uuid(),
                   '@doi' => $ap_task_passed_array['doi'],
                 ]);
-              error_log('entity status'.$entity_status);
-              error_log('desired_state'.json_encode($ap_task_passed_array));
-              error_log('previous_state'.json_encode($previous_ap_task_passed_array));
               $workflow_status['error'][] = $message;
               // What is else here?
               if (in_array($ap_task_passed_array['event'] ?? NULL, ["publish","register"]) && !$entity_status && !$ignore_entity_status) {
