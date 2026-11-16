@@ -1,6 +1,6 @@
 {
     "name": "archipelago/fragaria",
-    "description": "Archipelago ID and Redirect Module for Drupal 10/11",
+    "description": "Archipelago ID and Redirect Module for Drupal 11",
     "license": "GPL-2.0+",
     "type": "drupal-module",
     "homepage": "https://github.com/esmero/fragaria",
@@ -13,7 +13,7 @@
         }
     ],
     "require": {
-        "strawberryfield/strawberryfield":"1.* || 2.*",
-        "strawberryfield/webform_strawberryfield":"1.* || 2.*"
+        "strawberryfield/strawberryfield":"2.*",
+        "strawberryfield/webform_strawberryfield":"2.*"
     }
 }
