@@ -44,9 +44,7 @@ class FragariaRedirectRoutingService {
     try {
       $query = $this->entityTypeManager->getStorage('fragariaredirect_entity')
         ->getQuery();
-    } catch (InvalidPluginDefinitionException $e) {
-      return $route_collection;
-    } catch (PluginNotFoundException $e) {
+    } catch (InvalidPluginDefinitionException|PluginNotFoundException $e) {
       return $route_collection;
     }
     $ids = $query->execute();
@@ -55,9 +53,7 @@ class FragariaRedirectRoutingService {
       $entities = $this->entityTypeManager->getStorage(
         'fragariaredirect_entity'
       )->loadMultiple($ids);
-    } catch (InvalidPluginDefinitionException $e) {
-      return $route_collection;
-    } catch (PluginNotFoundException $e) {
+    } catch (InvalidPluginDefinitionException|PluginNotFoundException) {
       return $route_collection;
     }
 

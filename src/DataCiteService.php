@@ -27,9 +27,9 @@ class DataCiteService {
   use MessengerTrait;
   use StringTranslationTrait;
 
-  private const LOGGER_NAME = 'fragaria_datacite';
+  private const string LOGGER_NAME = 'fragaria_datacite';
 
-  private const LOGGER_NAME_PEPPERMINT = 'fragaria_datacite_peppermint';
+  private const string LOGGER_NAME_PEPPERMINT = 'fragaria_datacite_peppermint';
 
   public const DATACITE_DATA_WRAPPER = [
     'data' => [
@@ -52,13 +52,6 @@ class DataCiteService {
   public const DATACITE_FRAGARIA_VALID_STATUSES = ['draft','registered','findable', 'error', NULL];
 
   /**
-   * The entity manager service.
-   *
-   * @var \Drupal\Core\Entity\EntityTypeManagerInterface
-   */
-  protected EntityTypeManagerInterface $entityTypeManager;
-
-  /**
    * The  Configuration settings.
    *
    * @var \Drupal\Core\Config\ImmutableConfig
@@ -66,32 +59,9 @@ class DataCiteService {
   protected ImmutableConfig $config;
 
   /**
-   * The logger factory.
-   *
-   * @var \Drupal\Core\Logger\LoggerChannelFactoryInterface
-   */
-  protected LoggerChannelFactoryInterface $loggerFactory;
-
-  /**
-   * @var \Drupal\Core\Session\AccountInterface
-   */
-  protected AccountInterface $currentUser;
-
-  /**
-   * @var \GuzzleHttp\ClientInterface
-   */
-  protected ClientInterface $httpClient;
-
-  /**
    * @var \Drupal\Core\Config\ConfigFactoryInterface
    */
   private ConfigFactoryInterface $configFactory;
-  /**
-   * The Drupal Renderer.
-   *
-   * @var \Drupal\Core\Render\RendererInterface
-   */
-  protected RendererInterface $renderer;
 
   /**
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
@@ -101,16 +71,20 @@ class DataCiteService {
    * @param \GuzzleHttp\ClientInterface $httpClient
    * @param \Drupal\Core\Render\RendererInterface $renderer
    */
-  public function __construct(EntityTypeManagerInterface $entityTypeManager, ConfigFactoryInterface $configFactory,  AccountInterface $currentUser, LoggerChannelFactoryInterface $loggerFactory, ClientInterface $httpClient, RendererInterface $renderer) {
-    $this->entityTypeManager = $entityTypeManager;
+  public function __construct(/**
+   * The entity manager service.
+   */
+  protected EntityTypeManagerInterface $entityTypeManager, ConfigFactoryInterface $configFactory,  protected AccountInterface $currentUser, /**
+   * The logger factory.
+   */
+  protected LoggerChannelFactoryInterface $loggerFactory, protected ClientInterface $httpClient, /**
+   * The Drupal Renderer.
+   */
+  protected RendererInterface $renderer) {
     $this->config = $configFactory->get(
       'fragaria.datacite'
     );
     $this->configFactory = $configFactory;
-    $this->loggerFactory = $loggerFactory;
-    $this->currentUser = $currentUser;
-    $this->httpClient = $httpClient;
-    $this->renderer = $renderer;
     // Setup the Fragaria data cite monolog file logger
     $log = new Logger(static::LOGGER_NAME);
     $private_path = \Drupal::service('stream_wrapper_manager')->getViaUri('private://')->getDirectoryPath();
@@ -984,9 +958,7 @@ class DataCiteService {
             $context = $context + $original_context;
             $cacheabledata = $this->renderer->executeInRenderContext(
               new RenderContext(),
-              function() use ($context, $metadatadisplay_entity) {
-                return $metadatadisplay_entity->renderNative($context);
-              }
+              fn() => $metadatadisplay_entity->renderNative($context)
             );
             if (count($cacheabledata)) {
               $jsonstring = $cacheabledata->__toString();
@@ -1059,7 +1031,7 @@ class DataCiteService {
         return FALSE;
       }
     }
-    catch (\Exception $exception) {
+    catch (\Exception) {
       // JSON schema validation failed. Log?
       return FALSE;
     }

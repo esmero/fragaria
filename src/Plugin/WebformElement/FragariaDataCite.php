@@ -96,7 +96,7 @@ class FragariaDataCite extends OptionsBase {
   /**
    * {@inheritdoc}
    */
-  public function prepare(array &$element, WebformSubmissionInterface $webform_submission = NULL) {
+  public function prepare(array &$element, ?WebformSubmissionInterface $webform_submission = NULL) {
     $config = $this->configFactory->get('webform.settings');
 
     // Always include empty option.

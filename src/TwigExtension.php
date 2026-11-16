@@ -17,26 +17,20 @@ use Drupal\fragaria\DataCiteService;
 class TwigExtension extends AbstractExtension {
 
   /**
-   * @var \Drupal\Fragaria\DataCiteService
-   */
-  private DataCiteService $dataCiteService;
-
-
-  /**
    * Constructs \Drupal\fragaria\TwigExtension
    *
    * @param DataCiteService $dataCiteService
    *   The DataCite Service.
    */
-  public function __construct(DataCiteService $dataCiteService) {
-    $this->dataCiteService = $dataCiteService;
+  public function __construct(private readonly DataCiteService $dataCiteService)
+  {
   }
 
 
   /**
    * @inheritDoc
    */
-  public function getFunctions() {
+  public function getFunctions(): array {
     return [
       new TwigFunction('sbf_datacite',
         $this->processAndValidateDataCite(...))

@@ -59,18 +59,6 @@ class Redirect extends ControllerBase {
   protected $parseModeManager;
 
   /**
-   * The access manager.
-   *
-   * @var \Drupal\Core\Access\AccessManagerInterface
-   */
-  protected AccessManagerInterface $accessManager;
-
-  /**
-   * @var \Symfony\Component\Routing\Matcher\UrlMatcherInterface
-   */
-  private UrlMatcherInterface $accessUnawareRouter;
-
-  /**
    * The redirect destination service.
    *
    * @var \Drupal\Core\Routing\RedirectDestinationInterface
@@ -93,17 +81,18 @@ class Redirect extends ControllerBase {
     EntityTypeManagerInterface $entitytype_manager,
     ParseModePluginManager $parse_mode_manager,
     RouteMatchInterface $route_match,
-    AccessManagerInterface $access_manager,
+    /**
+     * The access manager.
+     */
+    protected AccessManagerInterface $accessManager,
     RedirectDestinationInterface $redirect_destination,
-    UrlMatcherInterface $access_unaware_router,
+    private readonly UrlMatcherInterface $accessUnawareRouter,
     HttpKernelInterface $http_kernel) {
     $this->configFactory = $config_factory;
     $this->entityTypeManager = $entitytype_manager;
     $this->parseModeManager = $parse_mode_manager;
     $this->routeMatch = $route_match;
-    $this->accessManager = $access_manager;
     $this->redirectDestination = $redirect_destination;
-    $this->accessUnawareRouter = $access_unaware_router;
     $this->httpKernel = $http_kernel;
   }
 

@@ -46,31 +46,25 @@ class FragariaEventInsertSubscriberDataCite extends StrawberryfieldEventInsertSu
   protected $account;
 
   /**
-   * @var \Drupal\Fragaria\DataCiteService
-   */
-  private DataCiteService $dataCiteService;
-
-  /**
    * FragariaEventPresaveSubscriberDataCite constructor.
    *
    * @param \Drupal\Core\StringTranslation\TranslationInterface $string_translation
    * @param \Drupal\Core\Messenger\MessengerInterface $messenger
    * @param \Drupal\Core\Logger\LoggerChannelFactoryInterface $logger_factory
    * @param \Drupal\Core\Session\AccountInterface $account
-   * @param \Drupal\Fragaria\DataCiteService $data_cite_service
+   * @param \Drupal\Fragaria\DataCiteService $dataCiteService
    */
   public function __construct(
     TranslationInterface $string_translation,
     MessengerInterface $messenger,
     LoggerChannelFactoryInterface $logger_factory,
     AccountInterface $account,
-    DataCiteService $data_cite_service
+    private DataCiteService $dataCiteService
   ) {
     $this->stringTranslation = $string_translation;
     $this->messenger = $messenger;
     $this->loggerFactory = $logger_factory;
     $this->account = $account;
-    $this->dataCiteService = $data_cite_service;
   }
 
   /**
@@ -129,7 +123,7 @@ class FragariaEventInsertSubscriberDataCite extends StrawberryfieldEventInsertSu
             }
           }
         }
-        $current_class = get_called_class();
+        $current_class = static::class;
         $event->setProcessedBy($current_class, TRUE);
       }
     }

@@ -22,43 +22,19 @@ use Drupal\format_strawberryfield\Entity\MetadataExposeConfigEntity;
 class FragariaRedirectConfigEntityForm extends EntityForm {
 
   /**
-   * @var \Drupal\strawberryfield\StrawberryfieldUtilityService
-   */
-  private StrawberryfieldUtilityService $strawberryfieldUtility;
-
-  /**
-   * @var \Drupal\Core\Path\PathValidatorInterface
-   */
-  private PathValidatorInterface $pathValidator;
-
-  /**
-   * @var \Drupal\Core\Routing\RequestContext
-   */
-  private RequestContext $requestContext;
-
-  /**
-   * @var \Drupal\path_alias\AliasManagerInterface
-   */
-  private AliasManagerInterface $aliasManager;
-
-  /**
    * FragariaRedirectConfigEntityForm constructor.
    *
    * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
-   * @param \Drupal\strawberryfield\StrawberryfieldUtilityService $strawberryfield_utility_service
+   * @param \Drupal\strawberryfield\StrawberryfieldUtilityService $strawberryfieldUtility
    */
   public function __construct(
     EntityTypeManagerInterface $entityTypeManager,
-    StrawberryfieldUtilityService $strawberryfield_utility_service,
-    PathValidatorInterface $path_validator,
-    RequestContext $request_context,
-    AliasManagerInterface $alias_manager
+    private readonly StrawberryfieldUtilityService $strawberryfieldUtility,
+    private readonly PathValidatorInterface $pathValidator,
+    private readonly RequestContext $requestContext,
+    private readonly AliasManagerInterface $aliasManager
   ) {
     $this->entityTypeManager = $entityTypeManager;
-    $this->strawberryfieldUtility = $strawberryfield_utility_service;
-    $this->pathValidator = $path_validator;
-    $this->requestContext = $request_context;
-    $this->aliasManager = $alias_manager;
   }
 
   /**
@@ -272,20 +248,20 @@ class FragariaRedirectConfigEntityForm extends EntityForm {
     // Remove button and internal Form API values from submitted values.
     $form_state->cleanValues();
     $suffixes = $form_state->getValue('path_suffixes_element','');
-    $suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $suffixes));
+    $suffixes = array_map(fn($line) => $line ? trim($line) : NULL, explode(PHP_EOL, $suffixes));
     $suffixes = array_filter($suffixes);
 
     $prefixes = $form_state->getValue('path_prefixes_element','');
-    $prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $prefixes));
+    $prefixes = array_map(fn($line) => $line ? trim($line) : NULL, explode(PHP_EOL, $prefixes));
     $prefixes = array_filter($prefixes);
 
 
     $search_api_field_value_prefixes = $form_state->getValue('search_api_field_value_prefixes_element','');
-    $search_api_field_value_prefixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $search_api_field_value_prefixes));
+    $search_api_field_value_prefixes = array_map(fn($line) => $line ? trim($line) : NULL, explode(PHP_EOL, $search_api_field_value_prefixes));
     $search_api_field_value_prefixes = array_filter($search_api_field_value_prefixes);
 
     $search_api_field_value_suffixes = $form_state->getValue('search_api_field_value_suffixes_element','');
-    $search_api_field_value_suffixes = array_map(function ($line) { return $line ? trim($line) : NULL;}, explode(PHP_EOL, $search_api_field_value_suffixes));
+    $search_api_field_value_suffixes = array_map(fn($line) => $line ? trim($line) : NULL, explode(PHP_EOL, $search_api_field_value_suffixes));
     $search_api_field_value_suffixes = array_filter($search_api_field_value_suffixes);
     if ($form_state->getValue('do_replacement')) {
       $search_api_field_value_suffixes = [];
