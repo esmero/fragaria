@@ -112,7 +112,7 @@ class FragariaRedirectConfigEntityListBuilder extends ConfigEntityListBuilder {
             ]
           );
       }
-      catch (\Exception $e) {
+      catch (\Exception) {
         $this->messenger()
           ->addError('We could not generate an example URL for the Fragaria Redirect Entity @label', [
             '@label' => $entity->label(),

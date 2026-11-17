@@ -3,65 +3,66 @@
 namespace Drupal\fragaria\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
+use Drupal\Core\Entity\Attribute\ConfigEntityType;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Config\Entity\ConfigEntityInterface;
 use Drupal\Core\DependencyInjection\DependencySerializationTrait;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\fragaria\Entity\Controller\FragariaRedirectConfigEntityListBuilder;
+use Drupal\fragaria\Form\FragariaRedirectConfigEntityDeleteForm;
+use Drupal\fragaria\Form\FragariaRedirectConfigEntityForm;
+use Drupal\fragaria\FragariaRedirectConfigEntityHtmlRouteProvider;
 
 /**
  * Defines the Fragaria Redirect Config entity.
  *
  * This entity defines a redirect route/pattern/source.
  * Allows dynamic routes to redirect to ADOs using Solr field matches.
- *
- * @ConfigEntityType(
- *   id = "fragariaredirect_entity",
- *   label = @Translation("Fragaria Redirect Entity Configuration"),
- *   handlers = {
- *     "list_builder" = "Drupal\fragaria\Entity\Controller\FragariaRedirectConfigEntityListBuilder",
- *     "form" = {
- *       "add" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityForm",
- *       "edit" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityForm",
- *       "delete" = "Drupal\fragaria\Form\FragariaRedirectConfigEntityDeleteForm",
- *     },
- *     "route_provider" = {
- *       "html" = "Drupal\fragaria\FragariaRedirectConfigEntityHtmlRouteProvider",
- *     },
- *   },
- *   config_prefix = "fragariaredirect_entity",
- *   admin_permission = "administer site configuration",
- *   entity_keys = {
- *     "id" = "id",
- *     "label" = "label",
- *     "uuid" = "uuid",
- *     "active" = "active",
- *   },
- *  config_export = {
- *     "id",
- *     "label",
- *     "uuid",
- *     "path_prefixes",
- *     "segments_in_pattern",
- *     "search_api_index",
- *     "search_api_field",
- *     "path_suffixes",
- *     "search_api_field_value_prefixes",
- *     "search_api_field_value_suffixes",
- *     "variable_path_suffix",
- *     "redirect_http_code",
- *     "cache",
- *     "active",
- *     "do_replacement",
- *     "custom_404",
- *     "allow_empty_variable",
- *   },
- *   links = {
- *     "edit-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit",
- *     "add-form" = "/admin/config/archipelago/fragariaredirect/add",
- *     "delete-form" = "/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/delete",
- *     "collection" = "/admin/config/archipelago/fragariaredirect",
- *   }
- * )
  */
+#[ConfigEntityType(
+  id: 'fragariaredirect_entity',
+  label: new TranslatableMarkup('Fragaria Redirect Entity Configuration'),
+  config_prefix: 'fragariaredirect_entity',
+  entity_keys: [
+    'id' => 'id',
+    'label' => 'label',
+    'uuid' => 'uuid',
+    'active' => 'active'
+  ],
+  handlers: [
+    'list_builder' => FragariaRedirectConfigEntityListBuilder::class,
+    'form' => [
+      'add' => FragariaRedirectConfigEntityForm::class,
+      'edit' => FragariaRedirectConfigEntityForm::class,
+      'delete' => FragariaRedirectConfigEntityDeleteForm::class],
+    'route_provider' => [
+      'html' => FragariaRedirectConfigEntityHtmlRouteProvider::class]],
+  links: [
+    'edit-form' => '/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/edit',
+    'add-form' => '/admin/config/archipelago/fragariaredirect/add',
+    'delete-form' => '/admin/config/archipelago/fragariaredirect/{fragariaredirect_entity}/delete',
+    'collection' => '/admin/config/archipelago/fragariaredirect'],
+  admin_permission: 'administer site configuration',
+  config_export: [
+    'id',
+    'label',
+    'uuid',
+    'path_prefixes',
+    'segments_in_pattern',
+    'search_api_index',
+    'search_api_field',
+    'path_suffixes',
+    'search_api_field_value_prefixes',
+    'search_api_field_value_suffixes',
+    'variable_path_suffix',
+    'redirect_http_code',
+    'cache',
+    'active',
+    'do_replacement',
+    'custom_404',
+    'allow_empty_variable'
+  ]
+)]
 class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaConfigInterface {
 
   use DependencySerializationTrait;
@@ -107,7 +108,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * Set of static prefixes to be added to the passed argument of the route.
    *
    * This is needed in case the indexed value does not match 1:1 with the route
-   * argument, e.g argument is 111, the actual indexed value is namespace:111
+   * argument, e.g. argument is 111, the actual indexed value is namespace:111
    *
    * @var array
    */
@@ -118,7 +119,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    * Set of static suffixes to be added to the passed argument of the route.
    *
    * This is needed in case the indexed value does not match 1:1 with the route
-   * argument, e.g argument is 123, the actual indexed value is 123:other
+   * argument, e.g. argument is 123, the actual indexed value is 123:other
    *
    * @var array
    */
@@ -256,7 +257,7 @@ class FragariaRedirectConfigEntity extends ConfigEntityBase implements FragariaC
    */
   public function getPathPrefixes(): array {
     $prefixes = array_map(function($prefix) { if (is_string($prefix)) { return trim(trim($prefix), '/');} else {return NULL;}}, $this->path_prefixes);
-    return array_filter($prefixes);;
+    return array_filter($prefixes);
   }
 
   /**
